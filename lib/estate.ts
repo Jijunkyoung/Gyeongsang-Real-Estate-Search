@@ -5,6 +5,16 @@ export const regions:Record<string,string[]>={
 '대구광역시':['중구','동구','서구','남구','북구','수성구','달서구','달성군','군위군'],
 '경상남도':['창원시','진주시','통영시','사천시','김해시','밀양시','거제시','양산시','의령군','함안군','창녕군','고성군','남해군','하동군','산청군','함양군','거창군','합천군'],
 '경상북도':['포항시','경주시','김천시','안동시','구미시','영주시','영천시','상주시','문경시','경산시','의성군','청송군','영양군','영덕군','청도군','고령군','성주군','칠곡군','예천군','봉화군','울진군','울릉군']};
+// Non-autonomous city districts are represented with their parent city in the key.
+export const cityDistricts:Record<string,string[]>={
+ '창원시':['의창구','성산구','마산합포구','마산회원구','진해구'],
+ '포항시':['남구','북구']
+};
+for(const [city,children] of Object.entries(cityDistricts)){
+ const province=city==='창원시'?'경상남도':'경상북도';
+ regions[province].push(...children.map(child=>city+' '+child));
+}
+export function withinDistrict(actual:string,selected:string){return selected==='전체'||actual===selected||actual.startsWith(selected+' ');}
 export const kinds=['분양','재개발','재건축','개발사업','중요소식','공급량','시장지표','실거래'] as const;
 export type Estate={id:string;kind:string;name:string;region:string;district:string;date:string;source:string;url:string;summary:string;status:string;important:boolean;units?:number|null;year?:number|null;supplyType?:string;coverage?:string;price?:number|null;area?:number|null;rate?:number|null;metric?:string;endDate?:string;stage?:string;developer?:string;ratio?:number|null;moveYear?:number|null;lat?:number|null;lng?:number|null;history?:{date:string;text:string}[]};
 export const sources=[
@@ -35,9 +45,9 @@ export const glossary=[
 ['가격지수 변동률','지역 주택가격의 변화를 보여주는 지수의 증감률입니다. 개별 단지의 거래가격 상승률과는 다릅니다.'],
 ['미분양·준공 후 미분양','미분양은 아직 분양되지 않은 주택, 준공 후 미분양은 건물이 완성된 후에도 남은 주택입니다.'],
 ['사업단계 확인','정비구역 지정 → 조합설립 → 사업시행인가 → 관리처분인가 → 이주·철거 → 착공 → 준공 순으로 진행을 살펴봅니다. 사업 유형에 따라 절차가 다릅니다.']];
-export function fmt(v:number|null|undefined,suffix=''){return v==null?'미확인':v.toLocaleString('ko-KR')+suffix}
+export function fmt(v:number|null|undefined,suffix=''){return v==null?'미수집':v.toLocaleString('ko-KR')+suffix}
 export function supplyFor(items:Estate[],region:string,district:string,year:number,type:string){
- const rows=items.filter(x=>x.kind==='공급량'&&x.region===region&&(district==='전체'||x.district===district)&&x.year===year&&x.supplyType===type&&x.units!=null).sort((a,b)=>b.date.localeCompare(a.date));
+ const rows=items.filter(x=>x.kind==='공급량'&&x.region===region&&withinDistrict(x.district,district)&&x.year===year&&x.supplyType===type&&x.units!=null).sort((a,b)=>b.date.localeCompare(a.date));
  const total=rows.find(x=>x.coverage==='전체집계'&&x.district===district);
  if(total)return {value:total.units??null,partial:false,rows:[total]};
  // A district total replaces partial records inside that district. Never add it twice.
