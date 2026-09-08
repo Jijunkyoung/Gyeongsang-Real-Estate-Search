@@ -1,6 +1,6 @@
 # 영남 부동산 아틀라스
 
-Private owner-facing real estate research workspace covering Ulsan, Busan, Daegu, Gyeongnam and Gyeongbuk.
+Public real estate research workspace covering Ulsan, Busan, Daegu, Gyeongnam and Gyeongbuk.
 
 ## Implemented
 
@@ -19,7 +19,7 @@ This is an initial working application, not a complete live market feed. Seed re
 - AI_API_KEY enables server-only OpenAI Chat Completions; AI_MODEL defaults to gpt-4.1-mini. Without a key, the endpoint explicitly returns evidence search, not generated AI. No key was configured or live model call tested.
 - Alert preference storage and in-site watchlist filtering work. RESEND_API_KEY and EMAIL_FROM enable a manual, authenticated own-account digest endpoint. No credentials were supplied and sending is untested/inactive. Background scheduling is not implemented or active. Email input stores a preference; sending requires a separate explicit button action and a configured service.
 - The map uses KOSTAT 2013 province geometry from https://github.com/southkorea/southkorea-maps/tree/master/kostat/2013 . It is labeled as a historical schematic; Gunwi is assigned to Daegu in the current text selectors. It does not establish cadastral/project boundaries. A current geometry dataset is needed for precise administrative maps.
-- Site access is owner-only. API routes require the platform-authenticated email; writes check Origin. If audience is ever expanded, add a separate owner/admin authorization rule before allowing shared users to edit source records.
+- Site records are publicly readable. Favorites and alert preferences require Sign in with ChatGPT and are stored separately under each normalized login email. Source-record editing and automatic collection require the configured administrator user ID; writes also check Origin.
 - Checklist and comparison selections are transient UI state. Authoritative records/favorites use D1.
 
 ## Validation
@@ -31,7 +31,7 @@ Production Worker build, TypeScript check with generated Cloudflare runtime type
 사용자 생성 저장소: [Gyeongsang-Real-Estate-Search](https://github.com/Jijunkyoung/Gyeongsang-Real-Estate-Search)
 기존 저장소 설명: 경상도 부동산조회-1
 
-- [서비스 열기](https://yeongnam-property-atlas.jjk08255.chatgpt.site) (소유자 로그인 필요)
+- [서비스 열기](https://yeongnam-property-atlas.jjk08255.chatgpt.site) (공개 열람, 관심목록은 로그인 필요)
 - `index.html`: 위 서비스 접속용 시작 페이지. 이 파일만 열어서는 서버 API·데이터베이스가 실행되지 않습니다.
 - `app/page.tsx`: 실제 React 홈페이지. `app/api/`: 저장·수집·검색·발송 서버 코드.
 - `lib/verified-data.json`: 출처별 확인 통계. 보도 확인과 기관 원표 대조를 구분합니다.
@@ -46,7 +46,7 @@ cp .env.example .env
 npm run dev
 ```
 
-현재 앱은 Sites의 Cloudflare Worker + D1 환경과 인증 헤더를 사용합니다. 로컬에서 화면은 확인할 수 있지만 인증이 필요한 API는 별도 로컬 인증·D1 구성이 필요합니다. 공개 GitHub Pages는 정적 파일만 제공하므로 서버 API를 실행하지 못합니다. 다른 호스팅으로 옮길 때는 Cloudflare D1 바인딩, 마이그레이션, 인증·관리자 권한을 구성해야 합니다. 사용자 인증 헤더를 임의로 신뢰하는 공개 서버로 배포하지 마세요.
+현재 앱은 Sites의 Cloudflare Worker + D1 환경과 인증 헤더를 사용합니다. 공개 방문자는 자료를 읽을 수 있고, 로그인한 사용자의 관심목록은 이메일 계정별로 분리됩니다. 로컬에서는 인증이 필요한 기능에 별도 로컬 인증·D1 구성이 필요합니다. 공개 GitHub Pages는 정적 파일만 제공하므로 서버 API를 실행하지 못합니다. 다른 호스팅으로 옮길 때는 Cloudflare D1 바인딩, 마이그레이션, 인증·관리자 권한을 구성해야 합니다. 사용자 인증 헤더를 임의로 신뢰하는 공개 서버로 배포하지 마세요.
 
 빌드: `npm run build` / 타입 확인: `npx tsc --noEmit`.
 소스 수정 시 실제 변경 내용·검증 결과·남은 연동 작업을 `gpt.md`에 추가하고 GitHub main에 커밋합니다. GitHub 저장과 서비스 게시의 성공 여부는 각각 확인합니다.
