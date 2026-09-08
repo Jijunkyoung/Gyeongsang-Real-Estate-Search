@@ -1,0 +1,70 @@
+name: Refresh official real-estate data
+
+on:
+  schedule:
+    - cron: "15 0 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [.github/workflows/refresh-data.yml]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: refresh-official-real-estate-data
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SITE_URL: https://yeongnam-property-atlas.jjk08255.chatgpt.site
+    steps:
+      - name: Collect KOSIS and ApplyHome
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          oidc_token() {
+            curl --fail --silent --show-error \
+              -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=yeongnam-property-atlas" \
+              | jq -er '.value'
+          }
+
+          collect() {
+            local path="$1"
+            local body="$2"
+            local token
+            token="$(oidc_token)"
+            curl --fail --silent --show-error --retry 2 \
+              -X POST \
+              -H "Authorization: Bearer ${token}" \
+              -H "Content-Type: application/json" \
+              --data "${body}" \
+              "${SITE_URL}${path}"
+            echo
+          }
+
+          today="$(date -u +%F)"
+          year="$(date -u +%Y)"
+          start_year="$((year - 5))"
+          collect "/api/kosis" "$(jq -nc --argjson start "${start_year}" --argjson end "${year}" '{startYear:$start,endYear:$end}')"
+
+          collect_range() {
+            local cursor="$1"
+            local end="$2"
+            while [[ "${cursor}" < "${end}" || "${cursor}" == "${end}" ]]; do
+              local chunk_end
+              chunk_end="$(date -u -d "${cursor} + 13 days" +%F)"
+              if [[ "${chunk_end}" > "${end}" ]]; then chunk_end="${end}"; fi
+              collect "/api/sync" "$(jq -nc --arg from "${cursor}" --arg to "${chunk_end}" '{from:$from,to:$to}')"
+              cursor="$(date -u -d "${chunk_end} + 1 day" +%F)"
+            done
+          }
+
+          collect_range "$(date -u -d "${today} + 1 day" +%F)" "$(date -u -d "${today} + 120 days" +%F)"
+          collect_range "$(date -u -d "${today} - 60 days" +%F)" "${today}"

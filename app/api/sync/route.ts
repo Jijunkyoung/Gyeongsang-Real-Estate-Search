@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   let authorized = false;
   try {
     sameOrigin(req);
-    requireCollector(req);
+    await requireCollector(req);
     authorized = true;
     const key = settings().PUBLIC_DATA_KEY;
     if (!key)

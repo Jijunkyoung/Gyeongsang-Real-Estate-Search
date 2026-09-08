@@ -1368,8 +1368,8 @@ export default function Home() {
                       올리지 않습니다.
                     </li>
                     <li>
-                      이 화면에서 기간을 선택해 수집 실행을 누릅니다. 인증키만
-                      등록하면 정기 수집이 시작되는 것은 아닙니다.
+                      GitHub Actions가 매일 오전 9시 15분에 자동 수집합니다. 이
+                      화면의 버튼은 즉시 다시 수집할 때 사용합니다.
                     </li>
                   </ol>
                   <p className="note">
@@ -1415,7 +1415,8 @@ export default function Home() {
                   <h2>청약홈 공고 수집</h2>
                   <p className="note">
                     APT 공고를 최대 93일 범위로 수집합니다. 전체 주택 공급량으로
-                    집계하지 않습니다.
+                    집계하지 않습니다. 자동수집은 최근 60일과 향후 120일을 짧은
+                    구간으로 나눠 조회합니다.
                   </p>
                   <div className="filters">
                     <input
@@ -2082,6 +2083,26 @@ function CalendarView({
             );
           })}
         </div>
+        {monthEvents.some((event) => event.monthOnly) && (
+          <div className="margin-top">
+            <h3>월 단위 예정 일정</h3>
+            <p className="note">
+              날짜가 확정되지 않은 입주·공급 예정은 아래에 별도로 표시합니다.
+            </p>
+            <div className="filter-chips">
+              {monthEvents
+                .filter((event) => event.monthOnly)
+                .map((event) => (
+                  <button
+                    key={`month-${event.key}`}
+                    onClick={() => detail(event.record)}
+                  >
+                    {event.record.name} · {event.label}
+                  </button>
+                ))}
+            </div>
+          </div>
+        )}
         {!monthEvents.length && (
           <p className="note">
             이번 달에 수집·등록된 일정이 없습니다. 실제 일정이 없다는 의미는
@@ -2125,6 +2146,7 @@ function CalendarView({
         ) : (
           <p className="note">
             자료를 수집하거나 자료 관리에서 일정을 등록하면 달력에 반영됩니다.
+            청약홈에 아직 게시되지 않은 향후 공고는 자동수집 후 표시됩니다.
           </p>
         )}
       </section>

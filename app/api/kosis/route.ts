@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   let authorized = false;
   try {
     sameOrigin(req);
-    requireCollector(req);
+    await requireCollector(req);
     authorized = true;
     const key = settings().KOSIS_API_KEY;
     if (!key)
