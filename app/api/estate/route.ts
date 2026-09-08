@@ -96,7 +96,8 @@ export async function GET(req: Request) {
       account: { signedIn: !!user, email: user?.email || "", canAdmin },
       connections: {
         housing: canAdmin && !!settings().PUBLIC_DATA_KEY,
-        ai: !!user && !!settings().AI_API_KEY,
+        kosis: canAdmin && !!settings().KOSIS_API_KEY,
+        ai: !!user && (!!settings().UPSTAGE_API_KEY || !!settings().AI_API_KEY),
         email: !!user && !!settings().RESEND_API_KEY && !!settings().EMAIL_FROM,
       },
     });

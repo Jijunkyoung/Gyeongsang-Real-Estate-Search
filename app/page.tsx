@@ -185,12 +185,16 @@ export default function Home() {
     [editing, setEditing] = useState<Estate | null>(null);
   const [connections, setConnections] = useState({
     housing: false,
+    kosis: false,
     ai: false,
     email: false,
   });
   const [syncFrom, setSyncFrom] = useState("2026-09-01"),
     [syncTo, setSyncTo] = useState("2026-09-07"),
     [syncing, setSyncing] = useState(false);
+  const [kosisFrom, setKosisFrom] = useState("2020"),
+    [kosisTo, setKosisTo] = useState("2025"),
+    [kosisSyncing, setKosisSyncing] = useState(false);
   async function syncData() {
     setSyncing(true);
     try {
@@ -207,6 +211,24 @@ export default function Home() {
       toast.error((e as Error).message);
     } finally {
       setSyncing(false);
+    }
+  }
+  async function syncKosis() {
+    setKosisSyncing(true);
+    try {
+      const r = await fetch("/api/kosis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startYear: kosisFrom, endYear: kosisTo }),
+      });
+      const d: any = await r.json();
+      if (!r.ok) throw Error(d.error);
+      toast.success(`${d.count}건의 KOSIS 인허가 통계를 저장했습니다.`);
+      await reload();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setKosisSyncing(false);
     }
   }
   async function sendDigest() {
@@ -1291,14 +1313,13 @@ export default function Home() {
                 </div>
                 <div className="stats">
                   <div className="stat">
-                    <h3>공공데이터 자동수집</h3>
+                    <h3>공급자료 연동</h3>
                     <p>
-                      {connections.housing
-                        ? "인증키 등록됨"
-                        : "연동 대기 · 인증키 필요"}
+                      KOSIS {connections.kosis ? "연결됨" : "대기"} · 청약홈{" "}
+                      {connections.housing ? "연결됨" : "대기"}
                     </p>
-                    <LinkOut url="https://www.data.go.kr/data/15098547/openapi.do">
-                      청약홈 데이터 신청
+                    <LinkOut url="https://kosis.kr/openapi/">
+                      KOSIS 공식 통계
                     </LinkOut>
                   </div>
                   <div className="stat">
@@ -1330,13 +1351,12 @@ export default function Home() {
                   <h2>실제 자료 연결 절차</h2>
                   <ol>
                     <li>
-                      공공데이터포털에서 아래 청약홈 API의 활용신청을
-                      완료합니다.
+                      KOSIS 연간 인허가 통계와 청약홈 APT 공고를 각각
+                      수집합니다.
                     </li>
                     <li>
-                      승인된 일반 인증키(Decoding)를 서버 환경변수
-                      PUBLIC_DATA_KEY로 설정합니다. 공개 저장소에는 올리지
-                      마세요.
+                      인증키는 서버 비밀 환경변수에만 저장하며 공개 저장소에는
+                      올리지 않습니다.
                     </li>
                     <li>
                       이 화면에서 기간을 선택해 수집 실행을 누릅니다. 인증키만
@@ -1344,17 +1364,49 @@ export default function Home() {
                     </li>
                   </ol>
                   <p className="note">
-                    가격지수·실거래·전체 연간 공급량은 청약홈 API의 제공 대상이
-                    아닙니다. 현재는 공식 통계 파일을 확인해 JSON으로 가져올 수
-                    있으며, 별도 데이터 연동이 필요합니다.
+                    KOSIS 인허가는 시도 전체 연간 실적입니다. 실제 분양·입주량과
+                    다르며 구·군 세부값은 단지 및 지자체 자료를 별도로 수집해야
+                    합니다.
                   </p>
                   <LinkOut url="https://github.com/Jijunkyoung/Gyeongsang-Real-Estate-Search/blob/main/docs/DATA_SETUP.md">
                     항목별 연결 방법과 현재 제공 범위
                   </LinkOut>
+                  <h2>KOSIS 연간 인허가 통계 수집</h2>
+                  <p className="note">
+                    국토교통부 지역별 주택건설 인허가실적에서 경상권 5개 시도의
+                    연간 전체값을 가져옵니다. 현재 공식 확정자료 범위 안에서
+                    선택하세요.
+                  </p>
+                  <div className="filters">
+                    <input
+                      aria-label="KOSIS 시작 연도"
+                      type="number"
+                      min="1990"
+                      max={new Date().getFullYear()}
+                      value={kosisFrom}
+                      onChange={(e) => setKosisFrom(e.target.value)}
+                    />
+                    <span>~</span>
+                    <input
+                      aria-label="KOSIS 종료 연도"
+                      type="number"
+                      min="1990"
+                      max={new Date().getFullYear()}
+                      value={kosisTo}
+                      onChange={(e) => setKosisTo(e.target.value)}
+                    />
+                    <button
+                      className="btn primary"
+                      disabled={!connections.kosis || kosisSyncing}
+                      onClick={syncKosis}
+                    >
+                      {kosisSyncing ? "수집 중…" : "KOSIS 수집 실행"}
+                    </button>
+                  </div>
                   <h2>청약홈 공고 수집</h2>
                   <p className="note">
                     APT 공고를 최대 93일 범위로 수집합니다. 전체 주택 공급량으로
-                    집계하지 않습니다. 인증키 등록 후 실연동 검증이 필요합니다.
+                    집계하지 않습니다.
                   </p>
                   <div className="filters">
                     <input

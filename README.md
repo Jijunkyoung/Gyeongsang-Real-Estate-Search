@@ -9,14 +9,14 @@ Public real estate research workspace covering Ulsan, Busan, Daegu, Gyeongnam an
 - Annual supply by sale, occupancy and permit; unavailable values remain null; published regional totals supersede partial records. District aggregates are not double-counted with their constituent records. Province partial aggregates are not summed with potentially overlapping district records. Importers must keep record IDs stable for revisions.
 - Persistent D1 records and user-scoped favorites/alert preferences, validated JSON import/export and form editing.
 - Date-based calendar, ICS download, loan/cash planning, area-matched recorded transaction comparisons, glossary/checklist.
-- Evidence search and optional server-only OpenAI model answers with record citations.
+- Evidence search and optional server-only Upstage Solar/OpenAI answers with record citations.
 
 ## Integration status and limits
 
 This is an initial working application, not a complete live market feed. Seed records are a small official-source collection checked on 2026-09-07. No sample market rates or fabricated volume series are supplied. The LH 266-unit series is a partial sum of four published unit types, not Ulsan-wide supply. News dates describe a posting/as-of date; records whose date is collection time say so in their summary.
 
-- Live market indices, transactions and region-wide annual supply require licensed/official datasets. Currently supplied through validated manual records and JSON import. PUBLIC_DATA_KEY enables the manual, bounded /api/sync APT notice adapter. A key alone does not start collection. Live ingestion is untested without credentials. Automatic scheduled collection and market-index adapters are not implemented.
-- AI_API_KEY enables server-only OpenAI Chat Completions; AI_MODEL defaults to gpt-4.1-mini. Without a key, the endpoint explicitly returns evidence search, not generated AI. No key was configured or live model call tested.
+- `KOSIS_API_KEY` enables administrator-triggered import of the KOSIS annual province-level housing permit series. `PUBLIC_DATA_KEY` enables the bounded `/api/sync` APT notice adapter. These are different series: permits and notices are not occupancy totals. Automatic scheduling, district-level complete supply, and market-index adapters remain unimplemented.
+- `UPSTAGE_API_KEY` enables server-only Solar chat completions and takes precedence over the optional OpenAI fallback. `UPSTAGE_MODEL` defaults to `solar-pro2`. Without an AI key, the endpoint explicitly returns evidence search rather than generated text.
 - Alert preference storage and in-site watchlist filtering work. RESEND_API_KEY and EMAIL_FROM enable a manual, authenticated own-account digest endpoint. No credentials were supplied and sending is untested/inactive. Background scheduling is not implemented or active. Email input stores a preference; sending requires a separate explicit button action and a configured service.
 - The map uses KOSTAT 2013 province geometry from https://github.com/southkorea/southkorea-maps/tree/master/kostat/2013 . It is labeled as a historical schematic; Gunwi is assigned to Daegu in the current text selectors. It does not establish cadastral/project boundaries. A current geometry dataset is needed for precise administrative maps.
 - Site records are publicly readable. Favorites and alert preferences require Sign in with ChatGPT and are stored separately under each normalized login email. Source-record editing and automatic collection require the configured administrator user ID; writes also check Origin.
