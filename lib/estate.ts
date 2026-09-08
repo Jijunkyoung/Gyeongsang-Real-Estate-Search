@@ -16,7 +16,7 @@ for(const [city,children] of Object.entries(cityDistricts)){
 }
 export function withinDistrict(actual:string,selected:string){return selected==='전체'||actual===selected||actual.startsWith(selected+' ');}
 export const kinds=['분양','재개발','재건축','개발사업','중요소식','공급량','시장지표','실거래'] as const;
-export type Estate={id:string;kind:string;name:string;region:string;district:string;date:string;source:string;url:string;summary:string;status:string;important:boolean;units?:number|null;year?:number|null;supplyType?:string;coverage?:string;price?:number|null;area?:number|null;rate?:number|null;metric?:string;endDate?:string;stage?:string;developer?:string;ratio?:number|null;moveYear?:number|null;lat?:number|null;lng?:number|null;history?:{date:string;text:string}[]};
+export type Estate={id:string;kind:string;name:string;region:string;district:string;date:string;source:string;url:string;summary:string;status:string;important:boolean;units?:number|null;year?:number|null;supplyType?:string;coverage?:string;price?:number|null;area?:number|null;rate?:number|null;metric?:string;endDate?:string;stage?:string;developer?:string;ratio?:number|null;moveYear?:number|null;moveMonth?:string;lat?:number|null;lng?:number|null;history?:{date:string;text:string}[]};
 export const sources=[
 {name:'한국부동산원 R-ONE',type:'가격지수·거래량',url:'https://www.reb.or.kr/r-one/portal/main/indexPage.do'},
 {name:'국토교통부 실거래가',type:'매매·전월세 실거래',url:'https://rt.molit.go.kr/'},

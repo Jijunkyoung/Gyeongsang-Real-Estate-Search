@@ -25,7 +25,7 @@ function publishedDate(value: unknown) {
 export function parsePermitRows(rows: KosisRow[]): Estate[] {
   const result: Estate[] = [];
   for (const row of rows) {
-    const region = regionNames[String(row.C1_NM || "").trim()];
+    const region = regionNames[String(row.C1_NM || row.NM || "").trim()];
     const year = Number(row.PRD_DE);
     const value = Number(String(row.DT ?? "").replaceAll(",", ""));
     if (
@@ -52,7 +52,7 @@ export function parsePermitRows(rows: KosisRow[]): Estate[] {
       units: value,
       year,
       supplyType: "인허가",
-      coverage: "시도 전체집계",
+      coverage: "전체집계",
     });
   }
   return [...new Map(result.map((item) => [item.id, item])).values()];

@@ -155,6 +155,13 @@ function download(name: string, data: string, type = "application/json") {
 }
 type Pref = { favorites: string[]; alerts: boolean; email: string };
 type Account = { signedIn: boolean; email: string; canAdmin: boolean };
+type SyncRun = {
+  source: string;
+  status: "success" | "error";
+  count: number;
+  message: string;
+  updatedAt: string;
+};
 export default function Home() {
   const [tab, setTab] = useState("overview"),
     [region, setRegion] = useState("울산광역시"),
@@ -175,6 +182,7 @@ export default function Home() {
     email: "",
     canAdmin: false,
   });
+  const [syncRuns, setSyncRuns] = useState<SyncRun[]>([]);
   const [detail, setDetail] = useState<Estate | null>(null),
     [compare, setCompare] = useState<string[]>([]),
     [supplyType, setSupplyType] = useState("분양"),
@@ -251,6 +259,7 @@ export default function Home() {
       setPrefs(d.preferences);
       setConnections(d.connections);
       setAccount(d.account || { signedIn: false, email: "", canAdmin: false });
+      setSyncRuns(d.sync || []);
       setLoaded(true);
       setError("");
     } catch (e) {
@@ -1430,6 +1439,23 @@ export default function Home() {
                       {syncing ? "수집 중…" : "수집 실행"}
                     </button>
                   </div>
+                  {syncRuns.length > 0 && (
+                    <div className="stats margin-top">
+                      {syncRuns.map((run) => (
+                        <div className="stat" key={run.source}>
+                          <h3>{run.source} 최근 수집</h3>
+                          <p>
+                            {run.status === "success" ? "정상" : "실패"} ·{" "}
+                            {run.count}건
+                          </p>
+                          <small>
+                            {run.message} ·{" "}
+                            {new Date(run.updatedAt).toLocaleString("ko-KR")}
+                          </small>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </section>
                 <div className="filters">
                   <button
@@ -1929,17 +1955,54 @@ function CalendarView({
   records: Estate[];
   detail: (x: Estate) => void;
 }) {
-  const [month, setMonth] = useState("2026-09"),
+  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7)),
     [r, setR] = useState("전체");
   const [year, mon] = month.split("-").map(Number);
   const days = new Date(year, mon, 0).getDate(),
     offset = new Date(year, mon - 1, 1).getDay();
-  const events = records.filter(
-    (x) =>
-      x.endDate &&
-      /^\d{4}-\d{2}-\d{2}$/.test(x.endDate) &&
-      (r === "전체" || r === x.region),
+  type CalendarEvent = {
+    key: string;
+    date: string;
+    label: string;
+    record: Estate;
+    monthOnly: boolean;
+  };
+  const events = useMemo(
+    () => {
+      const found: CalendarEvent[] = [];
+      const add = (
+        record: Estate,
+        date: string | undefined,
+        label: string,
+      ) => {
+        if (!date || !/^\d{4}-\d{2}(-\d{2})?$/.test(date)) return;
+        found.push({
+          key: `${record.id}|${date}|${label}`,
+          date: date.length === 7 ? `${date}-01` : date,
+          label,
+          record,
+          monthOnly: date.length === 7,
+        });
+      };
+      for (const record of records) {
+        if (r !== "전체" && r !== record.region) continue;
+        add(record, record.endDate, "청약·접수 마감");
+        if (
+          ["분양", "재개발", "재건축"].includes(record.kind) &&
+          !(record.history || []).some((history) => history.date === record.date)
+        )
+          add(record, record.date, `${record.kind} 게시·기준일`);
+        add(record, record.moveMonth, "입주 예정월");
+        for (const history of record.history || [])
+          add(record, history.date, history.text);
+      }
+      return [...new Map(found.map((event) => [event.key, event])).values()];
+    },
+    [records, r],
   );
+  const monthEvents = events
+    .filter((event) => event.date.startsWith(month))
+    .sort((a, b) => a.date.localeCompare(b.date));
   function shift(n: number) {
     const d = new Date(year, mon - 1 + n, 1);
     setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
@@ -1951,7 +2014,8 @@ function CalendarView({
           <p className="eyebrow">DATES THAT MATTER</p>
           <h1>청약·사업 일정 달력</h1>
           <p>
-            마감일이 확인된 일정만 표시합니다. 공급 예정월과 접수일은 다릅니다.
+            모집공고·마감일·사업 이력·입주 예정월을 함께 봅니다. 월 단위 일정은
+            날짜가 확정된 것이 아닙니다.
           </p>
         </div>
       </div>
@@ -2003,35 +2067,41 @@ function CalendarView({
             return (
               <div className="calendar-day" key={day}>
                 <b>{i + 1}</b>
-                {events
-                  .filter((x) => x.endDate === day)
-                  .map((x) => (
-                    <button key={x.id} onClick={() => detail(x)}>
-                      {x.name}
-                      <small>마감</small>
+                {monthEvents
+                  .filter((event) => !event.monthOnly && event.date === day)
+                  .map((event) => (
+                    <button
+                      key={event.key}
+                      onClick={() => detail(event.record)}
+                    >
+                      {event.record.name}
+                      <small>{event.label}</small>
                     </button>
                   ))}
               </div>
             );
           })}
         </div>
-        {!events.some((x) => x.endDate?.startsWith(month)) && (
+        {!monthEvents.length && (
           <p className="note">
-            이번 달에 등록된 마감 일정이 없습니다. 전체 청약 일정이 없다는
-            의미는 아닙니다.
+            이번 달에 수집·등록된 일정이 없습니다. 실제 일정이 없다는 의미는
+            아닙니다.
           </p>
         )}
       </section>
       <section className="panel margin-top">
-        <h2>일정 목록</h2>
-        {events.length ? (
-          events
-            .sort((a, b) => (a.endDate || "").localeCompare(b.endDate || ""))
-            .map((x) => (
-              <div className="event-row" key={x.id}>
-                <span>{x.endDate}</span>
-                <button className="text-button" onClick={() => detail(x)}>
-                  {x.name}
+        <h2>{year}년 {mon}월 일정 목록</h2>
+        {monthEvents.length ? (
+          monthEvents.map((event) => (
+              <div className="event-row" key={event.key}>
+                <span>
+                  {event.monthOnly ? event.date.slice(0, 7) : event.date}
+                </span>
+                <button
+                  className="text-button"
+                  onClick={() => detail(event.record)}
+                >
+                  {event.record.name} · {event.label}
                 </button>
                 <button
                   className="btn"
@@ -2043,7 +2113,7 @@ function CalendarView({
                         .replace(/[,;]/g, " ");
                     download(
                       "estate-schedule.ics",
-                      `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Yeongnam Atlas//KO\r\nBEGIN:VEVENT\r\nUID:${x.id}@yeongnam-atlas\r\nDTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").split(".")[0]}Z\r\nDTSTART;VALUE=DATE:${x.endDate!.replace(/-/g, "")}\r\nSUMMARY:${clean(x.name + " 마감")}\r\nDESCRIPTION:${clean(x.source + " " + x.url)}\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n`,
+                      `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Yeongnam Atlas//KO\r\nBEGIN:VEVENT\r\nUID:${event.key.replace(/[^a-zA-Z0-9]/g, "-")}@yeongnam-atlas\r\nDTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").split(".")[0]}Z\r\nDTSTART;VALUE=DATE:${event.date.replace(/-/g, "")}\r\nSUMMARY:${clean(event.record.name + " " + event.label)}\r\nDESCRIPTION:${clean(event.record.source + " " + event.record.url)}\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n`,
                       "text/calendar",
                     );
                   }}
@@ -2054,7 +2124,7 @@ function CalendarView({
             ))
         ) : (
           <p className="note">
-            자료 관리에서 마감일을 등록하면 달력에 반영됩니다.
+            자료를 수집하거나 자료 관리에서 일정을 등록하면 달력에 반영됩니다.
           </p>
         )}
       </section>

@@ -1,12 +1,20 @@
-import { database, requireAdmin, sameOrigin, settings } from "@/lib/server";
+import {
+  database,
+  recordSync,
+  requireCollector,
+  sameOrigin,
+  settings,
+} from "@/lib/server";
 import { optionalCount } from "@/lib/data-utils";
 import { regions, type Estate } from "@/lib/estate";
 // Official schema namespace: https://infuser.odcloud.kr/oas/docs?namespace=ApplyhomeInfoDetailSvc/v1
 // Manual bounded ingestion. Does not claim to cover all housing or region-wide supply.
 export async function POST(req: Request) {
+  let authorized = false;
   try {
     sameOrigin(req);
-    requireAdmin(req);
+    requireCollector(req);
+    authorized = true;
     const key = settings().PUBLIC_DATA_KEY;
     if (!key)
       return Response.json(
@@ -61,9 +69,21 @@ export async function POST(req: Request) {
               .some((part) => part === d || part.startsWith(d + " ")),
           ) || "전체";
         const id = String(x.PBLANC_NO || x.HOUSE_MANAGE_NO || "");
-        const date = String(x.RCRIT_PBLANC_DE || "");
+        const normalizeDate = (value: unknown) => {
+          const raw = String(value || "").trim();
+          if (/^\d{8}$/.test(raw))
+            return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
+          return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : "";
+        };
+        const date = normalizeDate(x.RCRIT_PBLANC_DE);
         if (!id || !x.HOUSE_NM || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
-        all.push({
+        const units = optionalCount(x.TOT_SUPLY_HSHLDCO);
+        const endDate = normalizeDate(x.RCEPT_ENDDE) || undefined;
+        const moveRaw = String(x.MVN_PREARNGE_YM || "").replace(/-/g, "");
+        const moveMonth = /^\d{6}$/.test(moveRaw)
+          ? `${moveRaw.slice(0, 4)}-${moveRaw.slice(4, 6)}`
+          : undefined;
+        const notice: Estate = {
           id: "applyhome-" + id,
           kind: "분양",
           name: String(x.HOUSE_NM),
@@ -79,17 +99,29 @@ export async function POST(req: Request) {
           summary: `${address}. 청약홈 APT 공고 기준 공급물량입니다. 분양가·면적·자격은 모집공고 원문을 확인하세요.`,
           status: "모집공고",
           important: false,
-          units: optionalCount(x.TOT_SUPLY_HSHLDCO),
-          endDate: /^\d{4}-\d{2}-\d{2}$/.test(x.RCEPT_ENDDE || "")
-            ? x.RCEPT_ENDDE
-            : undefined,
-          moveYear: /^\d{6}$/.test(String(x.MVN_PREARNGE_YM || ""))
-            ? Number(String(x.MVN_PREARNGE_YM).slice(0, 4))
-            : null,
+          units,
+          endDate,
+          moveYear: moveMonth ? Number(moveMonth.slice(0, 4)) : null,
+          moveMonth,
           developer: String(x.CNSTRCT_ENTRPS_NM || ""),
           coverage: "해당 APT 모집공고의 공급물량",
           history: [{ date, text: "청약홈 모집공고" }],
-        });
+        };
+        all.push(notice);
+        if (units !== null)
+          all.push({
+            ...notice,
+            id: `applyhome-supply-${id}`,
+            kind: "공급량",
+            name: `${String(x.HOUSE_NM)} 모집공고 공급`,
+            year: Number(date.slice(0, 4)),
+            supplyType: "분양",
+            coverage: "부분집계",
+            important: false,
+            endDate: undefined,
+            moveMonth: undefined,
+            history: undefined,
+          });
       }
       const total = Number(data.matchCount ?? data.totalCount);
       if (
@@ -121,16 +153,27 @@ export async function POST(req: Request) {
               .bind(x.id, JSON.stringify(x), new Date().toISOString()),
           ),
       );
+    await recordSync(
+      "청약홈",
+      "success",
+      unique.length,
+      `${from}~${to} APT 모집공고`,
+    );
     return Response.json({
       ok: true,
       count: unique.length,
       scope: "청약홈 APT 공고 · 선택 기간 · 경상권",
     });
-  } catch {
+  } catch (error) {
+    if (authorized)
+      try {
+        await recordSync("청약홈", "error", 0, "수집 실패");
+      } catch {}
     return Response.json(
       {
         error:
           "수집을 완료하지 못했습니다. 인증키 승인·이용한도·외부기관 상태를 확인하세요.",
+        detail: error instanceof Error ? error.message : "알 수 없는 오류",
       },
       { status: 502 },
     );

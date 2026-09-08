@@ -1,10 +1,18 @@
-import { database, requireAdmin, sameOrigin, settings } from "@/lib/server";
+import {
+  database,
+  recordSync,
+  requireCollector,
+  sameOrigin,
+  settings,
+} from "@/lib/server";
 import { parsePermitRows, type KosisRow } from "@/lib/kosis";
 
 export async function POST(req: Request) {
+  let authorized = false;
   try {
     sameOrigin(req);
-    requireAdmin(req);
+    requireCollector(req);
+    authorized = true;
     const key = settings().KOSIS_API_KEY;
     if (!key)
       return Response.json(
@@ -45,7 +53,7 @@ export async function POST(req: Request) {
       format: "json",
       jsonVD: "Y",
       outputFields:
-        "ORG_ID,TBL_ID,TBL_NM,C1,C1_NM,ITM_ID,ITM_NM,UNIT_NM,PRD_SE,PRD_DE,DT,LST_CHN_DE",
+        "ORG_ID TBL_ID TBL_NM OBJ_ID OBJ_NM NM C1 C1_NM ITM_ID ITM_NM UNIT_NM PRD_SE PRD_DE LST_CHN_DE",
     };
     Object.entries(params).forEach(([name, value]) =>
       url.searchParams.set(name, value),
@@ -65,7 +73,19 @@ export async function POST(req: Request) {
     const records = parsePermitRows(data);
     if (!records.length)
       return Response.json(
-        { error: "선택한 연도의 경상권 인허가 통계를 찾지 못했습니다." },
+        {
+          error: "선택한 연도의 경상권 인허가 통계를 찾지 못했습니다.",
+          available: data.slice(0, 5).map((row) => ({
+            C1: row.C1,
+            C1_NM: row.C1_NM,
+            NM: row.NM,
+            C2: row.C2,
+            C2_NM: row.C2_NM,
+            ITM_NM: row.ITM_NM,
+            PRD_DE: row.PRD_DE,
+            DT: row.DT,
+          })),
+        },
         { status: 404 },
       );
     for (let i = 0; i < records.length; i += 50)
@@ -84,16 +104,27 @@ export async function POST(req: Request) {
               ),
           ),
       );
+    await recordSync(
+      "KOSIS",
+      "success",
+      records.length,
+      `${startYear}~${endYear} 주택건설 인허가`,
+    );
     return Response.json({
       ok: true,
       count: records.length,
       scope: "KOSIS 지역별 주택건설 인허가 연간통계 · 경상권 시도",
     });
-  } catch {
+  } catch (error) {
+    if (authorized)
+      try {
+        await recordSync("KOSIS", "error", 0, "수집 실패");
+      } catch {}
     return Response.json(
       {
         error:
           "KOSIS 수집을 완료하지 못했습니다. 인증키·통계표 제공상태를 확인하세요.",
+        detail: error instanceof Error ? error.message : "알 수 없는 오류",
       },
       { status: 502 },
     );

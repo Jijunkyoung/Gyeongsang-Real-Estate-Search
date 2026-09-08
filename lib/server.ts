@@ -6,14 +6,45 @@ export function database() {
 }
 export async function allRecords() {
   const r = await database()
-    .prepare("SELECT payload FROM estate_records")
-    .all<{ payload: string }>();
+    .prepare("SELECT id,payload FROM estate_records")
+    .all<{ id: string; payload: string }>();
   const map = new Map(seed.map((x) => [x.id, x]));
   for (const x of r.results) {
+    if (x.id.startsWith("_sync:")) continue;
     const v = JSON.parse(x.payload);
     map.set(v.id, v);
   }
   return [...map.values()];
+}
+export type SyncRun = {
+  source: string;
+  status: "success" | "error";
+  count: number;
+  message: string;
+  updatedAt: string;
+};
+export async function syncRuns() {
+  const r = await database()
+    .prepare("SELECT payload FROM estate_records WHERE id LIKE '_sync:%'")
+    .all<{ payload: string }>();
+  return r.results
+    .map((x) => JSON.parse(x.payload) as SyncRun)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+export async function recordSync(
+  source: string,
+  status: SyncRun["status"],
+  count: number,
+  message: string,
+) {
+  const updatedAt = new Date().toISOString();
+  const payload: SyncRun = { source, status, count, message, updatedAt };
+  await database()
+    .prepare(
+      "INSERT INTO estate_records(id,payload,updated) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,updated=excluded.updated",
+    )
+    .bind(`_sync:${source}`, JSON.stringify(payload), updatedAt)
+    .run();
 }
 export type UserIdentity = { id: string; email: string };
 export function optionalIdentity(req: Request): UserIdentity | null {
@@ -35,6 +66,12 @@ export function requireAdmin(req: Request) {
   if (!user || !adminId || user.id !== adminId)
     throw new Error("관리자 권한이 필요합니다.");
   return user;
+}
+export function requireCollector(req: Request) {
+  const expected = settings().COLLECTION_TOKEN;
+  const supplied = req.headers.get("x-collection-token");
+  if (expected && supplied && supplied === expected) return;
+  requireAdmin(req);
 }
 export function sameOrigin(req: Request) {
   const origin = req.headers.get("origin");

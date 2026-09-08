@@ -7,6 +7,7 @@ import {
   requireAdmin,
   sameOrigin,
   settings,
+  syncRuns,
 } from "@/lib/server";
 import { regions, kinds } from "@/lib/estate";
 const safeUrl = z
@@ -39,6 +40,7 @@ const item = z
     developer: z.string().max(100).optional(),
     ratio: z.number().nonnegative().nullable().optional(),
     moveYear: z.number().int().min(1900).max(2200).nullable().optional(),
+    moveMonth: z.string().regex(/^\d{4}-\d{2}$/).optional(),
     lat: z.number().min(33).max(39).nullable().optional(),
     lng: z.number().min(124).max(132).nullable().optional(),
     history: z
@@ -78,6 +80,7 @@ export async function GET(req: Request) {
   try {
     const user = optionalIdentity(req);
     const records = await allRecords();
+    const sync = await syncRuns();
     const p = user
       ? await database()
           .prepare("SELECT payload FROM estate_preferences WHERE owner=?")
@@ -90,6 +93,7 @@ export async function GET(req: Request) {
       user.id === settings().ADMIN_USER_ID;
     return Response.json({
       records,
+      sync,
       preferences: p
         ? JSON.parse(p.payload)
         : { favorites: [], alerts: false, email: user?.email || "" },

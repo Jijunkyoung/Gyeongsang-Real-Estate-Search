@@ -85,6 +85,10 @@ test("KOSIS permits map only Yeongnam provinces and keep their meaning", () => {
   assert.equal(rows[0].region, "울산광역시");
   assert.equal(rows[0].units, 1234);
   assert.equal(rows[0].supplyType, "인허가");
-  assert.equal(rows[0].coverage, "시도 전체집계");
+  assert.equal(rows[0].coverage, "전체집계");
   assert.equal(rows[0].date, "2026-02-06");
+  assert.equal(
+    parsePermitRows([{ NM: "부산", PRD_DE: "2024", DT: "10" }])[0].region,
+    "부산광역시",
+  );
 });
