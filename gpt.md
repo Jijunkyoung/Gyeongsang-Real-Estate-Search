@@ -235,3 +235,5 @@
 - 자료 등록·JSON 가져오기·청약홈 수집은 관리자 사용자 ID가 일치할 때만 서버에서 허용한다. 관리자 메뉴도 해당 계정에만 표시한다.
 - 저장소에는 관리자 ID나 API 키를 기록하지 않고 Sites 비밀 환경변수로 설정한다.
 - production Worker 빌드와 공급 집계 회귀검사 4건은 통과했다. 기존 렌더 HTML 검사 1건은 Node가 Worker 전용 `cloudflare:` 모듈을 불러오지 못해 계속 실패하며 배포 빌드 오류는 아니다.
+- Sites 버전 4 배포가 성공한 뒤 접근 모드를 `public`으로 변경했다. 공개 주소와 `/api/estate`를 비로그인 요청으로 확인해 모두 HTTP 200을 받았고, 응답은 `signedIn: false`, 빈 관심목록, `canAdmin: false`로 확인됐다.
+- 기능 변경분은 GitHub `main` 커밋 `bdd1da42eeff34e3f407513d5040f4c6f19dbe3b`에 동기화하고 원격 `gpt.md`에서 이 항목이 존재하는지 확인했다.
