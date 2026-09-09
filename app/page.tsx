@@ -98,6 +98,15 @@ const labels: Record<string, [number, number]> = {
   울산광역시: [349, 450],
   부산광역시: [298, 552],
 };
+const population2025: Record<string, number> = {
+  부산광역시: 3_240_000,
+  대구광역시: 2_350_000,
+  울산광역시: 1_090_000,
+  경상남도: 3_210_000,
+  경상북도: 2_507_000,
+};
+const adequateSupplyFor = (region: string) =>
+  Math.round((population2025[region] * 0.005) / 100) * 100;
 function Pick({
   value,
   onChange,
@@ -459,12 +468,27 @@ export default function Home() {
       </button>
     </div>
   );
+  const adequateNeed =
+    district === "전체" && supplyType === "입주"
+      ? adequateSupplyFor(region)
+      : null;
+  const supplyScaleMax = Math.max(
+    1,
+    adequateNeed || 0,
+    ...supply.map((value) => value.value || 0),
+  );
   const supplyChart = (
     <>
+      {adequateNeed && (
+        <div className="supply-need-summary">
+          <span aria-hidden="true" />
+          적정필요물량 참고선 {fmt(adequateNeed, "호/년")}
+        </div>
+      )}
       <div
         className="chart"
         role="img"
-        aria-label={`${region} ${supplyType} 연도별 공급량. 미수집 연도는 수치 없음.`}
+        aria-label={`${region} ${supplyType} 연도별 공급량.${adequateNeed ? ` 적정필요물량 참고선은 연 ${adequateNeed}호.` : ""} 미수집 연도는 수치 없음.`}
       >
         {supply.map((s) => (
           <div className="bar-col" key={s.year}>
@@ -482,17 +506,20 @@ export default function Home() {
                     .filter(Boolean)
                     .join(" ")}
                   style={{
-                    height:
-                      Math.max(
-                        3,
-                        (s.value /
-                          Math.max(1, ...supply.map((v) => v.value || 0))) *
-                          100,
-                      ) + "%",
+                    height: Math.max(3, (s.value / supplyScaleMax) * 100) + "%",
                   }}
                 />
               ) : (
                 <div className="bar-missing" />
+              )}
+              {adequateNeed && (
+                <span
+                  aria-hidden="true"
+                  className="adequate-need-line"
+                  style={{
+                    bottom: `${(adequateNeed / supplyScaleMax) * 100}%`,
+                  }}
+                />
               )}
             </div>
             <strong>{s.year}</strong>
@@ -503,9 +530,13 @@ export default function Home() {
         ))}
       </div>
       <p className="note">
-        단위: 호 · 빗금은 일부 기간 또는 일부 단지 집계, 점선 테두리는
-        추정물량입니다. 예상물량은 공식 공고의 입주예정월 기준이며 실제 입주
-        시기와 물량은 변경될 수 있습니다.
+        단위: 호 · 확정·예상 물량은 실선 막대, 추정물량만 점선 테두리입니다.
+        부분집계 여부는 아래 표에서 별도로 확인하세요. 적정필요물량은 2025년 말
+        주민등록인구의 0.5%를 적용한 시장 비교용 참고선이며 정부의 공식 공급
+        기준은 아닙니다. 시군구에는 임의 배분하지 않습니다.{" "}
+        <LinkOut url="https://kosis.kr/statHtml/statHtml.do?orgId=101&tblId=DT_1B040A3">
+          인구자료 출처
+        </LinkOut>
       </p>
     </>
   );
