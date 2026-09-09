@@ -67,7 +67,7 @@ jobs:
             done
           }
 
-          # Refresh schema v2 uses the current ApplyHome priority-date fields.
+          # Refresh schema v3 also stores official move-in plans as expected supply.
           # Refresh the full current application schedule fields, including
           # special supply and first/second-priority application dates.
           collect_range "$(date -u -d "${today} + 1 day" +%F)" "$(date -u -d "${today} + 180 days" +%F)"
