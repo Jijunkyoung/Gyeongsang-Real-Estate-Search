@@ -119,6 +119,7 @@ export type Estate = {
   year?: number | null;
   supplyType?: string;
   coverage?: string;
+  supplyStatus?: "confirmed" | "expected" | "estimated";
   price?: number | null;
   area?: number | null;
   rate?: number | null;
@@ -400,6 +401,7 @@ export const seed: Estate[] = [
     year: 2027,
     supplyType: "입주",
     coverage: "부분집계",
+    supplyStatus: "expected",
   },
   {
     id: "busan-march",
@@ -474,6 +476,21 @@ export function supplyFor(
   year: number,
   type: string,
 ) {
+  const classify = (selected: Estate[]) => {
+    if (
+      selected.some(
+        (x) => x.supplyStatus === "estimated" || /추정/.test(x.status),
+      )
+    )
+      return "estimated" as const;
+    if (
+      selected.some(
+        (x) => x.supplyStatus === "expected" || /예상|예정/.test(x.status),
+      )
+    )
+      return "expected" as const;
+    return "confirmed" as const;
+  };
   const rows = items
     .filter(
       (x) =>
@@ -489,7 +506,12 @@ export function supplyFor(
     (x) => x.coverage === "전체집계" && x.district === district,
   );
   if (total)
-    return { value: total.units ?? null, partial: false, rows: [total] };
+    return {
+      value: total.units ?? null,
+      partial: false,
+      rows: [total],
+      supplyStatus: classify([total]),
+    };
   // A district total replaces partial records inside that district. Never add it twice.
   const used: Estate[] = [];
   for (const d of [...new Set(rows.map((x) => x.district))]) {
@@ -506,5 +528,6 @@ export function supplyFor(
       : null,
     partial: true,
     rows: chosen,
+    supplyStatus: chosen.length ? classify(chosen) : null,
   };
 }
