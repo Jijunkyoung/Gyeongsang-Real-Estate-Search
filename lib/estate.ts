@@ -483,6 +483,7 @@ export function supplyFor(
       )
     )
       return "estimated" as const;
+    if (year < new Date().getFullYear()) return "confirmed" as const;
     if (
       selected.some(
         (x) => x.supplyStatus === "expected" || /예상|예정/.test(x.status),
