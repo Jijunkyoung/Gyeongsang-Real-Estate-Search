@@ -491,7 +491,7 @@ export function supplyFor(
       return "expected" as const;
     return "confirmed" as const;
   };
-  const rows = items
+  const rawRows = items
     .filter(
       (x) =>
         x.kind === "공급량" &&
@@ -502,6 +502,24 @@ export function supplyFor(
         x.units != null,
     )
     .sort((a, b) => b.date.localeCompare(a.date));
+  // The same complex can be announced again for cancellations or residual units.
+  // For one district/year, keep the largest confirmed complex count instead of
+  // adding a smaller re-announcement to it.
+  const normalizeSupplyName = (name: string) =>
+    name
+      .replace(/\s*(입주예정 공급|확인 물량|모집공고 공급)$/, "")
+      .replace(/\s+/g, "")
+      .toLowerCase();
+  const byComplex = new Map<string, Estate>();
+  for (const row of rawRows) {
+    const key = `${row.district}|${normalizeSupplyName(row.name)}`;
+    const previous = byComplex.get(key);
+    if (!previous || (row.units ?? 0) > (previous.units ?? 0))
+      byComplex.set(key, row);
+  }
+  const rows = [...byComplex.values()].sort((a, b) =>
+    b.date.localeCompare(a.date),
+  );
   const total = rows.find(
     (x) => x.coverage === "전체집계" && x.district === district,
   );
