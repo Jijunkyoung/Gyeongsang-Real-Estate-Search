@@ -53,6 +53,7 @@ export function parsePermitRows(rows: KosisRow[]): Estate[] {
       year,
       supplyType: "인허가",
       coverage: "전체집계",
+      supplyStatus: "confirmed",
     });
   }
   return [...new Map(result.map((item) => [item.id, item])).values()];
