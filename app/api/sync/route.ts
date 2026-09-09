@@ -7,6 +7,10 @@ import {
 } from "@/lib/server";
 import { optionalCount } from "@/lib/data-utils";
 import { regions, type Estate } from "@/lib/estate";
+import {
+  buildApplyhomeSchedule,
+  normalizeApplyhomeDate,
+} from "@/lib/applyhome";
 // Official schema namespace: https://infuser.odcloud.kr/oas/docs?namespace=ApplyhomeInfoDetailSvc/v1
 // Manual bounded ingestion. Does not claim to cover all housing or region-wide supply.
 export async function POST(req: Request) {
@@ -70,16 +74,14 @@ export async function POST(req: Request) {
               .some((part) => part === d || part.startsWith(d + " ")),
           ) || "전체";
         const id = String(x.PBLANC_NO || x.HOUSE_MANAGE_NO || "");
-        const normalizeDate = (value: unknown) => {
-          const raw = String(value || "").trim();
-          if (/^\d{8}$/.test(raw))
-            return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
-          return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : "";
-        };
-        const date = normalizeDate(x.RCRIT_PBLANC_DE);
+        const date = normalizeApplyhomeDate(x.RCRIT_PBLANC_DE);
         if (!id || !x.HOUSE_NM || !/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
         const units = optionalCount(x.TOT_SUPLY_HSHLDCO);
-        const endDate = normalizeDate(x.RCEPT_ENDDE) || undefined;
+        const endDate =
+          normalizeApplyhomeDate(x.SUBSCRPT_RCEPT_ENDDE) ||
+          normalizeApplyhomeDate(x.RCEPT_ENDDE) ||
+          undefined;
+        const schedule = buildApplyhomeSchedule(x);
         const moveRaw = String(x.MVN_PREARNGE_YM || "").replace(/-/g, "");
         const moveMonth = /^\d{6}$/.test(moveRaw)
           ? `${moveRaw.slice(0, 4)}-${moveRaw.slice(4, 6)}`
@@ -91,6 +93,8 @@ export async function POST(req: Request) {
           region: r,
           district,
           date,
+          dateType: "official",
+          verifiedAt: new Date().toISOString().slice(0, 10),
           source: "한국부동산원 청약홈",
           url:
             typeof x.PBLANC_URL === "string" &&
@@ -106,6 +110,7 @@ export async function POST(req: Request) {
           moveMonth,
           developer: String(x.CNSTRCT_ENTRPS_NM || ""),
           coverage: "해당 APT 모집공고의 공급물량",
+          schedule,
           history: [{ date, text: "청약홈 모집공고" }],
         };
         // Historical backfills can persist only the annual supply evidence.
@@ -123,6 +128,7 @@ export async function POST(req: Request) {
             important: false,
             endDate: undefined,
             moveMonth: undefined,
+            schedule: undefined,
             history: undefined,
           });
       }

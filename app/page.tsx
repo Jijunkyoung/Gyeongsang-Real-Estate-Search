@@ -403,7 +403,8 @@ export default function Home() {
         <LinkOut url={x.url}>출처 바로 확인</LinkOut>
         <div className="row spread foot">
           <span>
-            {x.source} · {x.date}
+            {x.source} · {x.dateType === "checked" ? "확인 " : ""}
+            {x.date}
           </span>
           <button className="text-button" onClick={() => setDetail(x)}>
             상세 보기
@@ -1655,7 +1656,15 @@ export default function Home() {
                   <p className="note">확인된 진행 이력이 없습니다.</p>
                 )}
                 <LinkOut url={detail.url}>{detail.source} 원문 확인</LinkOut>
-                <p className="note">기준·게시일: {detail.date}</p>
+                <p className="note">
+                  {detail.dateType === "checked"
+                    ? "자료 확인일"
+                    : "공식·게시일"}
+                  : {detail.date}
+                  {detail.verifiedAt && detail.verifiedAt !== detail.date
+                    ? ` · 자료 확인 ${detail.verifiedAt}`
+                    : ""}
+                </p>
                 <button className="btn wide" onClick={() => star(detail.id)}>
                   <Star size={16} />
                   관심목록 저장·해제
@@ -1984,9 +1993,14 @@ function CalendarView({
     };
     for (const record of records) {
       if (r !== "전체" && r !== record.region) continue;
-      add(record, record.endDate, "청약·접수 마감");
+      for (const item of record.schedule || [])
+        add(record, item.date, item.label);
+      if (!record.schedule?.length)
+        add(record, record.endDate, "청약·접수 마감");
       if (
         ["분양", "재개발", "재건축"].includes(record.kind) &&
+        record.dateType !== "checked" &&
+        !/자료 확인일|표시일은 자료 확인일|수집일/.test(record.summary) &&
         !(record.history || []).some((history) => history.date === record.date)
       )
         add(record, record.date, `${record.kind} 게시·기준일`);
@@ -2561,12 +2575,25 @@ function Editor({
           />
         </label>
         <label className="field">
-          기준·게시일
+          날짜
           <input
             required
             type="date"
             value={data.date}
             onChange={(e) => field("date", e.target.value)}
+          />
+        </label>
+        <label className="field">
+          날짜 성격
+          <Pick
+            value={
+              data.dateType === "checked" ? "자료 확인일" : "공식 발생·게시일"
+            }
+            onChange={(v) =>
+              field("dateType", v === "자료 확인일" ? "checked" : "official")
+            }
+            options={["공식 발생·게시일", "자료 확인일"]}
+            label="날짜 성격"
           />
         </label>
       </div>

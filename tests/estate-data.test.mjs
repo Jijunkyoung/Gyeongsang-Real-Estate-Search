@@ -22,6 +22,7 @@ function load(file) {
 const { seed, supplyFor } = load("estate.ts");
 const { optionalCount } = load("data-utils.ts");
 const { parsePermitRows } = load("kosis.ts");
+const { buildApplyhomeSchedule } = load("applyhome.ts");
 test("empty upstream counts never become zero", () => {
   for (const v of [undefined, null, "", "  ", true, -1, "abc"])
     assert.equal(optionalCount(v), null);
@@ -91,4 +92,27 @@ test("KOSIS permits map only Yeongnam provinces and keep their meaning", () => {
     parsePermitRows([{ NM: "부산", PRD_DE: "2024", DT: "10" }])[0].region,
     "부산광역시",
   );
+});
+test("ApplyHome dates keep special supply and priority rounds separate", () => {
+  const schedule = buildApplyhomeSchedule({
+    SPSPLY_RCEPT_BGNDE: "20260914",
+    SPSPLY_RCEPT_ENDDE: "20260914",
+    GNRL_RNK1_CRSPAREA_RCPTDE_PD: "2026-09-15",
+    GNRL_RNK1_ETC_AREA_RCPTDE_PD: "2026-09-16",
+    GNRL_RNK2_CRSPAREA_RCPTDE_PD: "2026-09-17",
+    GNRL_RNK2_ETC_AREA_RCPTDE_PD: "2026-09-17",
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(schedule)), [
+    { date: "2026-09-14", label: "특별공급 접수" },
+    { date: "2026-09-15", label: "1순위 접수 · 해당지역" },
+    { date: "2026-09-16", label: "1순위 접수 · 기타지역" },
+    { date: "2026-09-17", label: "2순위 접수 · 기타지역" },
+    { date: "2026-09-17", label: "2순위 접수 · 해당지역" },
+  ]);
+});
+test("B-04 uses the official notice date rather than the verification date", () => {
+  const b04 = seed.find((item) => item.id === "ulsan-b04");
+  assert.equal(b04.date, "2026-02-26");
+  assert.equal(b04.dateType, "official");
+  assert.equal(b04.verifiedAt, "2026-09-09");
 });

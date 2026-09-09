@@ -22,6 +22,11 @@ const item = z
     region: z.string().refine((x) => x in regions),
     district: z.string().min(1).max(40),
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    dateType: z.enum(["official", "checked"]).optional(),
+    verifiedAt: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
     source: z.string().min(1).max(100),
     url: safeUrl,
     summary: z.string().max(6000),
@@ -40,9 +45,21 @@ const item = z
     developer: z.string().max(100).optional(),
     ratio: z.number().nonnegative().nullable().optional(),
     moveYear: z.number().int().min(1900).max(2200).nullable().optional(),
-    moveMonth: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+    moveMonth: z
+      .string()
+      .regex(/^\d{4}-\d{2}$/)
+      .optional(),
     lat: z.number().min(33).max(39).nullable().optional(),
     lng: z.number().min(124).max(132).nullable().optional(),
+    schedule: z
+      .array(
+        z.object({
+          date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          label: z.string().min(1).max(100),
+        }),
+      )
+      .max(30)
+      .optional(),
     history: z
       .array(z.object({ date: z.string().max(20), text: z.string().max(1000) }))
       .max(100)
