@@ -99,6 +99,26 @@ test("future supply keeps expected and estimated confidence separate", () => {
   );
   assert.equal(estimated.supplyStatus, "estimated");
 });
+test("repeat notices for the same complex are not double counted", () => {
+  const whole = seed.find((x) => x.id === "movein-ulsan-laels-2028");
+  const result = supplyFor(
+    [
+      whole,
+      {
+        ...whole,
+        id: "applyhome-occupancy-laels",
+        name: "라엘에스 입주예정 공급",
+        units: 1073,
+      },
+    ],
+    "울산광역시",
+    "남구",
+    2028,
+    "입주",
+  );
+  assert.equal(result.value, 2033);
+  assert.equal(result.rows.length, 1);
+});
 test("KOSIS permits map only Yeongnam provinces and keep their meaning", () => {
   const rows = parsePermitRows([
     { C1_NM: "울산", PRD_DE: "2025", DT: "1,234", LST_CHN_DE: "20260206" },
