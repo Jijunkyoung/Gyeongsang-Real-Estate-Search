@@ -121,9 +121,15 @@ async function fetchMonth(key: string, lawdCode: string, month: string) {
   url.searchParams.set("numOfRows", "2000");
   const response = await fetch(url, { signal: AbortSignal.timeout(20000) });
   const xml = await response.text();
-  if (!response.ok)
-    throw new Error(`공공데이터 응답 오류 (${response.status})`);
-  return parseApartmentTrades(xml);
+  try {
+    const rows = parseApartmentTrades(xml);
+    if (!response.ok)
+      throw new Error(`공공데이터 응답 오류 (${response.status})`);
+    return rows;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "공공데이터 오류";
+    throw new Error(`${detail} (HTTP ${response.status})`);
+  }
 }
 
 export async function lookupApartmentTrades(input: {
