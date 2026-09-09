@@ -24,6 +24,7 @@ export async function POST(req: Request) {
     const body: any = await req.json();
     const from = String(body.from || "");
     const to = String(body.to || "");
+    const supplyOnly = body.supplyOnly === true;
     if (
       !/^\d{4}-\d{2}-\d{2}$/.test(from) ||
       !/^\d{4}-\d{2}-\d{2}$/.test(to) ||
@@ -107,7 +108,9 @@ export async function POST(req: Request) {
           coverage: "해당 APT 모집공고의 공급물량",
           history: [{ date, text: "청약홈 모집공고" }],
         };
-        all.push(notice);
+        // Historical backfills can persist only the annual supply evidence.
+        // Keeping old notices out of the calendar avoids turning it into an archive.
+        if (!supplyOnly) all.push(notice);
         if (units !== null)
           all.push({
             ...notice,
@@ -162,7 +165,9 @@ export async function POST(req: Request) {
     return Response.json({
       ok: true,
       count: unique.length,
-      scope: "청약홈 APT 공고 · 선택 기간 · 경상권",
+      scope: supplyOnly
+        ? "청약홈 APT 공고 공급량 · 선택 기간 · 경상권"
+        : "청약홈 APT 공고 · 선택 기간 · 경상권",
     });
   } catch (error) {
     if (authorized)

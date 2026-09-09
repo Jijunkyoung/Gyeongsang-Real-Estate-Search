@@ -19,7 +19,7 @@ concurrency:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       SITE_URL: https://yeongnam-property-atlas.jjk08255.chatgpt.site
     steps:
@@ -57,14 +57,21 @@ jobs:
           collect_range() {
             local cursor="$1"
             local end="$2"
+            local supply_only="${3:-false}"
             while [[ "${cursor}" < "${end}" || "${cursor}" == "${end}" ]]; do
               local chunk_end
               chunk_end="$(date -u -d "${cursor} + 13 days" +%F)"
               if [[ "${chunk_end}" > "${end}" ]]; then chunk_end="${end}"; fi
-              collect "/api/sync" "$(jq -nc --arg from "${cursor}" --arg to "${chunk_end}" '{from:$from,to:$to}')"
+              collect "/api/sync" "$(jq -nc --arg from "${cursor}" --arg to "${chunk_end}" --argjson supplyOnly "${supply_only}" '{from:$from,to:$to,supplyOnly:$supplyOnly}')"
               cursor="$(date -u -d "${chunk_end} + 1 day" +%F)"
             done
           }
 
           collect_range "$(date -u -d "${today} + 1 day" +%F)" "$(date -u -d "${today} + 120 days" +%F)"
           collect_range "$(date -u -d "${today} - 60 days" +%F)" "${today}"
+
+          # A workflow-file push runs a one-time historical backfill. Only annual
+          # supply evidence is stored, so past notices do not crowd the calendar.
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            collect_range "2020-01-01" "${today}" true
+          fi

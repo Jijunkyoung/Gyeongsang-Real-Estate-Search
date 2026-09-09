@@ -185,9 +185,9 @@ export default function Home() {
   const [syncRuns, setSyncRuns] = useState<SyncRun[]>([]);
   const [detail, setDetail] = useState<Estate | null>(null),
     [compare, setCompare] = useState<string[]>([]),
-    [supplyType, setSupplyType] = useState("분양"),
-    [startYear, setStartYear] = useState("2024"),
-    [endYear, setEndYear] = useState("2030"),
+    [supplyType, setSupplyType] = useState("인허가"),
+    [startYear, setStartYear] = useState("2020"),
+    [endYear, setEndYear] = useState(String(new Date().getFullYear())),
     [compareType, setCompareType] = useState("지역"),
     [showEdit, setShowEdit] = useState(false),
     [editing, setEditing] = useState<Estate | null>(null);
@@ -1956,7 +1956,9 @@ function CalendarView({
   records: Estate[];
   detail: (x: Estate) => void;
 }) {
-  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7)),
+  const [month, setMonth] = useState(() =>
+      new Date().toISOString().slice(0, 7),
+    ),
     [r, setR] = useState("전체");
   const [year, mon] = month.split("-").map(Number);
   const days = new Date(year, mon, 0).getDate(),
@@ -1968,41 +1970,45 @@ function CalendarView({
     record: Estate;
     monthOnly: boolean;
   };
-  const events = useMemo(
-    () => {
-      const found: CalendarEvent[] = [];
-      const add = (
-        record: Estate,
-        date: string | undefined,
-        label: string,
-      ) => {
-        if (!date || !/^\d{4}-\d{2}(-\d{2})?$/.test(date)) return;
-        found.push({
-          key: `${record.id}|${date}|${label}`,
-          date: date.length === 7 ? `${date}-01` : date,
-          label,
-          record,
-          monthOnly: date.length === 7,
-        });
-      };
-      for (const record of records) {
-        if (r !== "전체" && r !== record.region) continue;
-        add(record, record.endDate, "청약·접수 마감");
-        if (
-          ["분양", "재개발", "재건축"].includes(record.kind) &&
-          !(record.history || []).some((history) => history.date === record.date)
-        )
-          add(record, record.date, `${record.kind} 게시·기준일`);
-        add(record, record.moveMonth, "입주 예정월");
-        for (const history of record.history || [])
-          add(record, history.date, history.text);
-      }
-      return [...new Map(found.map((event) => [event.key, event])).values()];
-    },
-    [records, r],
-  );
+  const events = useMemo(() => {
+    const found: CalendarEvent[] = [];
+    const add = (record: Estate, date: string | undefined, label: string) => {
+      if (!date || !/^\d{4}-\d{2}(-\d{2})?$/.test(date)) return;
+      found.push({
+        key: `${record.id}|${date}|${label}`,
+        date: date.length === 7 ? `${date}-01` : date,
+        label,
+        record,
+        monthOnly: date.length === 7,
+      });
+    };
+    for (const record of records) {
+      if (r !== "전체" && r !== record.region) continue;
+      add(record, record.endDate, "청약·접수 마감");
+      if (
+        ["분양", "재개발", "재건축"].includes(record.kind) &&
+        !(record.history || []).some((history) => history.date === record.date)
+      )
+        add(record, record.date, `${record.kind} 게시·기준일`);
+      add(record, record.moveMonth, "입주 예정월");
+      for (const history of record.history || [])
+        add(record, history.date, history.text);
+    }
+    return [...new Map(found.map((event) => [event.key, event])).values()];
+  }, [records, r]);
   const monthEvents = events
     .filter((event) => event.date.startsWith(month))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const futureLimitDate = new Date();
+  futureLimitDate.setUTCMonth(futureLimitDate.getUTCMonth() + 12);
+  const futureLimit = futureLimitDate.toISOString().slice(0, 7);
+  const futureEvents = events
+    .filter(
+      (event) =>
+        event.date.slice(0, 7) >= currentMonth &&
+        event.date.slice(0, 7) <= futureLimit,
+    )
     .sort((a, b) => a.date.localeCompare(b.date));
   function shift(n: number) {
     const d = new Date(year, mon - 1 + n, 1);
@@ -2053,6 +2059,36 @@ function CalendarView({
             options={["전체", ...Object.keys(regions)]}
             label="일정 지역"
           />
+        </div>
+        <div className="margin-top">
+          <h3>앞으로 12개월 공개 일정</h3>
+          <p className="note">
+            청약 접수일은 청약홈 모집공고가 게시된 뒤 표시됩니다. 공고 전에는
+            공식 자료에 있는 입주 예정월만 월 단위로 표시합니다.
+          </p>
+          {futureEvents.length ? (
+            <div className="filter-chips">
+              {futureEvents.map((event) => (
+                <button
+                  key={`future-${event.key}`}
+                  onClick={() => {
+                    setMonth(event.date.slice(0, 7));
+                    detail(event.record);
+                  }}
+                >
+                  {event.date.slice(0, event.monthOnly ? 7 : 10)} ·{" "}
+                  {event.record.name}
+                  {" · "}
+                  {event.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="note">
+              현재 공개된 향후 일정이 없습니다. 이는 일정이 없다는 뜻이 아니라
+              공식 모집공고가 아직 게시되지 않았다는 뜻입니다.
+            </p>
+          )}
         </div>
         <div className="calendar-grid">
           {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
@@ -2111,38 +2147,40 @@ function CalendarView({
         )}
       </section>
       <section className="panel margin-top">
-        <h2>{year}년 {mon}월 일정 목록</h2>
+        <h2>
+          {year}년 {mon}월 일정 목록
+        </h2>
         {monthEvents.length ? (
           monthEvents.map((event) => (
-              <div className="event-row" key={event.key}>
-                <span>
-                  {event.monthOnly ? event.date.slice(0, 7) : event.date}
-                </span>
-                <button
-                  className="text-button"
-                  onClick={() => detail(event.record)}
-                >
-                  {event.record.name} · {event.label}
-                </button>
-                <button
-                  className="btn"
-                  onClick={() => {
-                    const clean = (s: string) =>
-                      s
-                        .replace(/\\/g, "\\\\")
-                        .replace(/\n/g, "\\n")
-                        .replace(/[,;]/g, " ");
-                    download(
-                      "estate-schedule.ics",
-                      `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Yeongnam Atlas//KO\r\nBEGIN:VEVENT\r\nUID:${event.key.replace(/[^a-zA-Z0-9]/g, "-")}@yeongnam-atlas\r\nDTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").split(".")[0]}Z\r\nDTSTART;VALUE=DATE:${event.date.replace(/-/g, "")}\r\nSUMMARY:${clean(event.record.name + " " + event.label)}\r\nDESCRIPTION:${clean(event.record.source + " " + event.record.url)}\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n`,
-                      "text/calendar",
-                    );
-                  }}
-                >
-                  <Download size={15} />내 달력에 추가
-                </button>
-              </div>
-            ))
+            <div className="event-row" key={event.key}>
+              <span>
+                {event.monthOnly ? event.date.slice(0, 7) : event.date}
+              </span>
+              <button
+                className="text-button"
+                onClick={() => detail(event.record)}
+              >
+                {event.record.name} · {event.label}
+              </button>
+              <button
+                className="btn"
+                onClick={() => {
+                  const clean = (s: string) =>
+                    s
+                      .replace(/\\/g, "\\\\")
+                      .replace(/\n/g, "\\n")
+                      .replace(/[,;]/g, " ");
+                  download(
+                    "estate-schedule.ics",
+                    `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Yeongnam Atlas//KO\r\nBEGIN:VEVENT\r\nUID:${event.key.replace(/[^a-zA-Z0-9]/g, "-")}@yeongnam-atlas\r\nDTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").split(".")[0]}Z\r\nDTSTART;VALUE=DATE:${event.date.replace(/-/g, "")}\r\nSUMMARY:${clean(event.record.name + " " + event.label)}\r\nDESCRIPTION:${clean(event.record.source + " " + event.record.url)}\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n`,
+                    "text/calendar",
+                  );
+                }}
+              >
+                <Download size={15} />내 달력에 추가
+              </button>
+            </div>
+          ))
         ) : (
           <p className="note">
             자료를 수집하거나 자료 관리에서 일정을 등록하면 달력에 반영됩니다.
