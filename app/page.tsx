@@ -74,6 +74,23 @@ const short = (s: string) =>
     .replace("광역시", "")
     .replace("경상남도", "경남")
     .replace("경상북도", "경북");
+const supplyStatusLabel = (
+  status?: Estate["supplyStatus"] | null,
+  legacyStatus = "",
+) =>
+  status === "estimated" || /추정/.test(legacyStatus)
+    ? "추정물량"
+    : status === "expected" || /예상|예정/.test(legacyStatus)
+      ? "예상물량"
+      : status
+        ? "확정물량"
+        : "—";
+const calendarEventClass = (label: string) =>
+  label.startsWith("1순위")
+    ? "rank-one"
+    : label.startsWith("2순위")
+      ? "rank-two"
+      : "";
 const labels: Record<string, [number, number]> = {
   경상북도: [270, 250],
   대구광역시: [217, 384],
@@ -185,9 +202,11 @@ export default function Home() {
   const [syncRuns, setSyncRuns] = useState<SyncRun[]>([]);
   const [detail, setDetail] = useState<Estate | null>(null),
     [compare, setCompare] = useState<string[]>([]),
-    [supplyType, setSupplyType] = useState("인허가"),
+    [supplyType, setSupplyType] = useState("입주"),
     [startYear, setStartYear] = useState("2020"),
-    [endYear, setEndYear] = useState(String(new Date().getFullYear())),
+    [endYear, setEndYear] = useState(
+      String(Math.min(2035, new Date().getFullYear() + 4)),
+    ),
     [compareType, setCompareType] = useState("지역"),
     [showEdit, setShowEdit] = useState(false),
     [editing, setEditing] = useState<Estate | null>(null);
@@ -455,7 +474,13 @@ export default function Home() {
             <div className="bar-track">
               {s.value != null ? (
                 <div
-                  className={"bar " + (s.partial ? "partial" : "")}
+                  className={[
+                    "bar",
+                    s.partial ? "partial" : "",
+                    s.supplyStatus || "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                   style={{
                     height:
                       Math.max(
@@ -472,15 +497,15 @@ export default function Home() {
             </div>
             <strong>{s.year}</strong>
             <small>
-              {s.value == null ? "미수집" : s.partial ? "부분집계" : "전체집계"}
+              {s.value == null ? "미수집" : supplyStatusLabel(s.supplyStatus)}
             </small>
           </div>
         ))}
       </div>
       <p className="note">
-        단위: 호 · 빗금은 일부 기간 또는 일부 단지 집계입니다. 연간 전체와 직접
-        비교하지 마세요. 준공은 실제 입주와 다르며, 예정 물량은 변경될 수
-        있습니다.
+        단위: 호 · 빗금은 일부 기간 또는 일부 단지 집계, 점선 테두리는
+        추정물량입니다. 예상물량은 공식 공고의 입주예정월 기준이며 실제 입주
+        시기와 물량은 변경될 수 있습니다.
       </p>
     </>
   );
@@ -1035,7 +1060,8 @@ export default function Home() {
                       "유형",
                       "확인 물량",
                       "범위",
-                      "실적·예정",
+                      "물량 구분",
+                      "자료 상태",
                       "자료 출처",
                     ].map((x) => (
                       <TableHead key={x}>{x}</TableHead>
@@ -1057,6 +1083,7 @@ export default function Home() {
                             ? "부분집계"
                             : "전체집계"}
                       </TableCell>
+                      <TableCell>{supplyStatusLabel(s.supplyStatus)}</TableCell>
                       <TableCell>
                         {[...new Set(s.rows.map((x) => x.status))].join(
                           " · ",
@@ -1496,6 +1523,7 @@ export default function Home() {
                               year: 2027,
                               supplyType: "입주",
                               coverage: "부분집계",
+                              supplyStatus: "expected",
                             },
                           ],
                           null,
@@ -2080,10 +2108,15 @@ function CalendarView({
             청약 접수일은 청약홈 모집공고가 게시된 뒤 표시됩니다. 공고 전에는
             공식 자료에 있는 입주 예정월만 월 단위로 표시합니다.
           </p>
+          <div className="calendar-legend" aria-label="청약 일정 색상 안내">
+            <span className="rank-one">1순위</span>
+            <span className="rank-two">2순위</span>
+          </div>
           {futureEvents.length ? (
             <div className="filter-chips">
               {futureEvents.map((event) => (
                 <button
+                  className={calendarEventClass(event.label)}
                   key={`future-${event.key}`}
                   onClick={() => {
                     setMonth(event.date.slice(0, 7));
@@ -2122,6 +2155,7 @@ function CalendarView({
                   .filter((event) => !event.monthOnly && event.date === day)
                   .map((event) => (
                     <button
+                      className={calendarEventClass(event.label)}
                       key={event.key}
                       onClick={() => detail(event.record)}
                     >
@@ -2669,6 +2703,24 @@ function Editor({
             />
           </label>
           <label className="field">
+            물량 구분
+            <Pick
+              value={supplyStatusLabel(data.supplyStatus, data.status)}
+              onChange={(v) =>
+                field(
+                  "supplyStatus",
+                  v === "확정물량"
+                    ? "confirmed"
+                    : v === "예상물량"
+                      ? "expected"
+                      : "estimated",
+                )
+              }
+              options={["확정물량", "예상물량", "추정물량"]}
+              label="물량 구분"
+            />
+          </label>
+          <label className="field">
             공급 연도
             <input
               required
@@ -3093,9 +3145,7 @@ function SupplyDistricts({
                     <small className="block">
                       {s.value == null
                         ? "미수집"
-                        : s.partial
-                          ? "부분집계"
-                          : "전체집계"}
+                        : `${s.partial ? "부분집계" : "전체집계"} · ${supplyStatusLabel(s.supplyStatus)}`}
                     </small>
                     {s.value == null && (
                       <SupplySearch
@@ -3150,7 +3200,7 @@ function SupplyDistricts({
                   <TableCell>{x.name}</TableCell>
                   <TableCell>{fmt(x.units, "호")}</TableCell>
                   <TableCell>
-                    {x.status}
+                    {supplyStatusLabel(x.supplyStatus, x.status)} · {x.status}
                     <small className="block">{x.coverage}</small>
                   </TableCell>
                   <TableCell>
