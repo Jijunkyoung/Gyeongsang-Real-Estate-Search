@@ -22,10 +22,24 @@ export function buildApplyhomeSchedule(row: Record<string, unknown>) {
   if (specialEnd && specialEnd !== specialStart)
     add(specialEnd, "특별공급 접수 마감");
 
-  add(row.GNRL_RNK1_CRSPAREA_RCPTDE_PD, "1순위 접수 · 해당지역");
-  add(row.GNRL_RNK1_ETC_AREA_RCPTDE_PD, "1순위 접수 · 기타지역");
-  add(row.GNRL_RNK2_CRSPAREA_RCPTDE_PD, "2순위 접수 · 해당지역");
-  add(row.GNRL_RNK2_ETC_AREA_RCPTDE_PD, "2순위 접수 · 기타지역");
+  // The current ApplyHome APT detail schema uses the names without `_PD`.
+  // Keep the older aliases as a fallback so already-exported rows remain usable.
+  add(
+    row.GNRL_RNK1_CRSPAREA_RCPTDE ?? row.GNRL_RNK1_CRSPAREA_RCPTDE_PD,
+    "1순위 접수 · 해당지역",
+  );
+  add(
+    row.GNRL_RNK1_ETC_AREA_RCPTDE ?? row.GNRL_RNK1_ETC_AREA_RCPTDE_PD,
+    "1순위 접수 · 기타지역",
+  );
+  add(
+    row.GNRL_RNK2_CRSPAREA_RCPTDE ?? row.GNRL_RNK2_CRSPAREA_RCPTDE_PD,
+    "2순위 접수 · 해당지역",
+  );
+  add(
+    row.GNRL_RNK2_ETC_AREA_RCPTDE ?? row.GNRL_RNK2_ETC_AREA_RCPTDE_PD,
+    "2순위 접수 · 기타지역",
+  );
 
   return schedule.sort(
     (a, b) => a.date.localeCompare(b.date) || a.label.localeCompare(b.label),
