@@ -97,10 +97,10 @@ test("ApplyHome dates keep special supply and priority rounds separate", () => {
   const schedule = buildApplyhomeSchedule({
     SPSPLY_RCEPT_BGNDE: "20260914",
     SPSPLY_RCEPT_ENDDE: "20260914",
-    GNRL_RNK1_CRSPAREA_RCPTDE_PD: "2026-09-15",
-    GNRL_RNK1_ETC_AREA_RCPTDE_PD: "2026-09-16",
-    GNRL_RNK2_CRSPAREA_RCPTDE_PD: "2026-09-17",
-    GNRL_RNK2_ETC_AREA_RCPTDE_PD: "2026-09-17",
+    GNRL_RNK1_CRSPAREA_RCPTDE: "2026-09-15",
+    GNRL_RNK1_ETC_AREA_RCPTDE: "2026-09-16",
+    GNRL_RNK2_CRSPAREA_RCPTDE: "2026-09-17",
+    GNRL_RNK2_ETC_AREA_RCPTDE: "2026-09-17",
   });
   assert.deepEqual(JSON.parse(JSON.stringify(schedule)), [
     { date: "2026-09-14", label: "특별공급 접수" },
@@ -109,6 +109,22 @@ test("ApplyHome dates keep special supply and priority rounds separate", () => {
     { date: "2026-09-17", label: "2순위 접수 · 기타지역" },
     { date: "2026-09-17", label: "2순위 접수 · 해당지역" },
   ]);
+});
+test("ApplyHome legacy priority date aliases remain compatible", () => {
+  assert.deepEqual(
+    JSON.parse(
+      JSON.stringify(
+        buildApplyhomeSchedule({
+          GNRL_RNK1_CRSPAREA_RCPTDE_PD: "2026-10-01",
+          GNRL_RNK2_ETC_AREA_RCPTDE_PD: "20261002",
+        }),
+      ),
+    ),
+    [
+      { date: "2026-10-01", label: "1순위 접수 · 해당지역" },
+      { date: "2026-10-02", label: "2순위 접수 · 기타지역" },
+    ],
+  );
 });
 test("B-04 uses the official notice date rather than the verification date", () => {
   const b04 = seed.find((item) => item.id === "ulsan-b04");
