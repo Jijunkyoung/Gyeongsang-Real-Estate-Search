@@ -36,6 +36,7 @@ const item = z
     year: z.number().int().min(1900).max(2200).nullable().optional(),
     supplyType: z.enum(["분양", "입주", "인허가", "준공"]).optional(),
     coverage: z.string().max(200).optional(),
+    supplyStatus: z.enum(["confirmed", "expected", "estimated"]).optional(),
     price: z.number().nonnegative().nullable().optional(),
     area: z.number().positive().nullable().optional(),
     rate: z.number().finite().nullable().optional(),
