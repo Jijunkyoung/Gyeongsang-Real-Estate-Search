@@ -110,9 +110,12 @@
 
 /* Official-schedule tones and supply confidence states. */
 .bar{--bar-color:#287b68;background-color:var(--bar-color);box-sizing:border-box}
-.bar.partial{background-color:var(--bar-color);background-image:repeating-linear-gradient(135deg,transparent 0,transparent 5px,#ffffff55 5px,#ffffff55 8px)}
+.bar.partial{background-color:var(--bar-color);background-image:none}
 .bar.expected{--bar-color:#6fa99c}
 .bar.estimated{background:transparent;border:2px dashed #287b68}
+.adequate-need-line{position:absolute;z-index:2;left:-7px;right:-7px;border-top:2px solid #df7b2e;pointer-events:none}
+.supply-need-summary{display:flex;align-items:center;gap:8px;color:#9a541f;font-size:13px;font-weight:700;margin:4px 0 -8px}
+.supply-need-summary span{width:28px;border-top:2px solid #df7b2e}
 .calendar-day button.rank-one,.filter-chips button.rank-one{background:#005bac;color:#fff;border-color:#005bac}
 .calendar-day button.rank-two,.filter-chips button.rank-two{background:#b9e4fa;color:#164a68;border-color:#8bcdf0}
 .calendar-legend{display:flex;gap:8px;margin:10px 0 16px}
