@@ -23,6 +23,7 @@ const { seed, supplyFor } = load("estate.ts");
 const { optionalCount } = load("data-utils.ts");
 const { parsePermitRows } = load("kosis.ts");
 const { buildApplyhomeSchedule } = load("applyhome.ts");
+const { lawdCodeFor, parseApartmentTrades, recentMonths } = load("transactions.ts");
 test("empty upstream counts never become zero", () => {
   for (const v of [undefined, null, "", "  ", true, -1, "abc"])
     assert.equal(optionalCount(v), null);
@@ -191,4 +192,25 @@ test("B-04 uses the official notice date rather than the verification date", () 
   assert.equal(b04.date, "2026-02-26");
   assert.equal(b04.dateType, "official");
   assert.equal(b04.verifiedAt, "2026-09-09");
+});
+test("RTMS district codes cover metro and non-autonomous districts", () => {
+  assert.equal(lawdCodeFor("울산광역시", "남구"), "31140");
+  assert.equal(lawdCodeFor("경상남도", "창원시 성산구"), "48123");
+  assert.equal(lawdCodeFor("경상남도", "창원시"), null);
+});
+test("RTMS XML parser normalizes trades and excludes cancellations", () => {
+  const rows = parseApartmentTrades(`
+    <response><header><resultCode>000</resultCode></header><body><items>
+      <item><aptNm>태화&amp;리버</aptNm><dealAmount>52,000</dealAmount><excluUseAr>84.91</excluUseAr><dealYear>2026</dealYear><dealMonth>8</dealMonth><dealDay>7</dealDay><floor>12</floor><buildYear>2020</buildYear><umdNm>신정동</umdNm><jibun>1-2</jibun></item>
+      <item><aptNm>해제단지</aptNm><dealAmount>40,000</dealAmount><excluUseAr>84</excluUseAr><dealYear>2026</dealYear><dealMonth>8</dealMonth><dealDay>8</dealDay><cdealDay>20260809</cdealDay></item>
+    </items></body></response>`);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].apartment, "태화&리버");
+  assert.equal(rows[0].amount, 52000);
+  assert.equal(rows[0].date, "2026-08-07");
+});
+test("RTMS month range crosses year boundaries", () => {
+  assert.deepEqual(JSON.parse(JSON.stringify(recentMonths("2026-02", 4))), [
+    "202602", "202601", "202512", "202511",
+  ]);
 });

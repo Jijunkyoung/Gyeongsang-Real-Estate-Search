@@ -69,6 +69,22 @@ import {
   supplyFor,
   type Estate,
 } from "@/lib/estate";
+import type { ApartmentTrade } from "@/lib/transactions";
+type TradeLookup = {
+  items: ApartmentTrade[];
+  summary: {
+    count: number;
+    average: number | null;
+    median: number | null;
+    minimum: number | null;
+    maximum: number | null;
+  };
+  scope: string;
+  source: string;
+  sourceUrl: string;
+  error?: string;
+  detail?: string;
+};
 const short = (s: string) =>
   s
     .replace("광역시", "")
@@ -1125,7 +1141,7 @@ export default function Home() {
                           s.rows.map((x) => (
                             <div key={x.id}>
                               <LinkOut url={x.url}>
-                                {x.source} · {x.date}
+                                {x.name} · {fmt(x.units, "호")} ({x.source} · {x.date})
                               </LinkOut>
                             </div>
                           ))
@@ -2283,18 +2299,59 @@ function ToolsView({ records, ai }: { records: Estate[]; ai: boolean }) {
     [deposit, setDeposit] = useState(10);
   const [unit, setUnit] = useState("선택");
   const picked = records.find((x) => x.id === unit);
-  const neighbors = picked
-    ? records.filter(
-        (x) =>
-          x.kind === "실거래" &&
-          x.region === picked.region &&
-          x.district === picked.district &&
-          x.area != null &&
-          picked.area != null &&
-          Math.abs(x.area - picked.area) <= picked.area * 0.1 &&
-          x.price != null,
-      )
-    : [];
+  const [compareRegion, setCompareRegion] = useState("울산광역시"),
+    [compareDistrict, setCompareDistrict] = useState("남구"),
+    [comparePrice, setComparePrice] = useState(50000),
+    [compareArea, setCompareArea] = useState(84),
+    [compareMonths, setCompareMonths] = useState("6"),
+    [tradeResult, setTradeResult] = useState<TradeLookup | null>(null),
+    [tradeLoading, setTradeLoading] = useState(false);
+  const compareDistricts = regions[compareRegion].filter(
+    (x) => x !== "창원시" && x !== "포항시",
+  );
+  function pickUnit(id: string) {
+    setUnit(id);
+    const item = records.find((x) => x.id === id);
+    if (!item) return;
+    setCompareRegion(item.region);
+    const available = regions[item.region].filter(
+      (x) => x !== "창원시" && x !== "포항시",
+    );
+    setCompareDistrict(
+      available.includes(item.district) ? item.district : available[0],
+    );
+    if (item.price != null) setComparePrice(item.price);
+    if (item.area != null) setCompareArea(item.area);
+  }
+  async function lookupTrades() {
+    if (comparePrice <= 0 || compareArea <= 0) return;
+    setTradeLoading(true);
+    setTradeResult(null);
+    try {
+      const response = await fetch("/api/estate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "transactions",
+          region: compareRegion,
+          district: compareDistrict,
+          area: compareArea,
+          months: Number(compareMonths),
+          endMonth: new Date().toISOString().slice(0, 7),
+        }),
+      });
+      const data = (await response.json()) as TradeLookup;
+      if (!response.ok)
+        throw Error([data.error, data.detail].filter(Boolean).join(" "));
+      setTradeResult(data);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "실거래가 조회 실패",
+      );
+    } finally {
+      setTradeLoading(false);
+    }
+  }
   const interest = rate / 100 / 12,
     n = term * 12,
     payment = interest
@@ -2449,10 +2506,11 @@ function ToolsView({ records, ai }: { records: Estate[]; ai: boolean }) {
       <section className="panel margin-top">
         <h2>분양가와 주변 실거래가 비교</h2>
         <p className="note">
-          같은 시군구, 전용면적 ±10%의 등록 거래를 찾아줍니다. 연식·계약일·층은
-          결과에서 별도로 확인하세요.
+          국토교통부의 아파트 매매 신고자료에서 같은 시군구, 전용면적 ±10%의
+          최근 거래를 직접 조회합니다. 비교할 분양 단지가 없어도 분양가와
+          면적을 직접 입력할 수 있습니다.
         </p>
-        <Select value={unit} onValueChange={setUnit}>
+        <Select value={unit} onValueChange={pickUnit}>
           <SelectTrigger className="picker" aria-label="분양 단지 선택">
             <SelectValue />
           </SelectTrigger>
@@ -2473,7 +2531,120 @@ function ToolsView({ records, ai }: { records: Estate[]; ai: boolean }) {
             {fmt(picked.price, "만원")}
           </p>
         )}
-        {neighbors.length ? (
+        <div className="form-grid comparison-form">
+          <label className="field">
+            지역
+            <Pick
+              value={compareRegion}
+              onChange={(value) => {
+                setCompareRegion(value);
+                setCompareDistrict(
+                  regions[value].find(
+                    (x) => x !== "창원시" && x !== "포항시",
+                  ) || "",
+                );
+                setTradeResult(null);
+              }}
+              options={Object.keys(regions)}
+              label="실거래 조회 지역"
+            />
+          </label>
+          <label className="field">
+            시·군·구
+            <Pick
+              value={compareDistrict}
+              onChange={(value) => {
+                setCompareDistrict(value);
+                setTradeResult(null);
+              }}
+              options={compareDistricts}
+              label="실거래 조회 시군구"
+            />
+          </label>
+          <label className="field">
+            분양가 (만원)
+            <input
+              type="number"
+              min="1"
+              value={comparePrice}
+              onChange={(event) =>
+                setComparePrice(Math.max(0, Number(event.target.value)))
+              }
+            />
+          </label>
+          <label className="field">
+            전용면적 (㎡)
+            <input
+              type="number"
+              min="1"
+              step="0.01"
+              value={compareArea}
+              onChange={(event) =>
+                setCompareArea(Math.max(0, Number(event.target.value)))
+              }
+            />
+          </label>
+          <label className="field">
+            최근 계약기간
+            <Pick
+              value={compareMonths}
+              onChange={setCompareMonths}
+              options={["3", "6", "12"]}
+              label="실거래 조회기간(개월)"
+            />
+          </label>
+          <div className="field comparison-action">
+            <span>공식자료 조회</span>
+            <button
+              className="btn primary"
+              onClick={lookupTrades}
+              disabled={
+                tradeLoading || comparePrice <= 0 || compareArea <= 0
+              }
+            >
+              {tradeLoading ? (
+                <RefreshCw className="spin" size={16} />
+              ) : (
+                <Search size={16} />
+              )}
+              {tradeLoading ? "조회 중…" : "실거래가 조회"}
+            </button>
+          </div>
+        </div>
+        {tradeResult && (
+          <>
+            <div className="comparison-summary">
+              <div>
+                <span>유사면적 거래</span>
+                <strong>{fmt(tradeResult.summary.count, "건")}</strong>
+              </div>
+              <div>
+                <span>중앙값</span>
+                <strong>{fmt(tradeResult.summary.median, "만원")}</strong>
+              </div>
+              <div>
+                <span>평균</span>
+                <strong>{fmt(tradeResult.summary.average, "만원")}</strong>
+              </div>
+              <div>
+                <span>분양가−중앙값</span>
+                <strong>
+                  {fmt(
+                    tradeResult.summary.median == null
+                      ? null
+                      : comparePrice - tradeResult.summary.median,
+                    "만원",
+                  )}
+                </strong>
+              </div>
+            </div>
+            <p className="note">
+              {tradeResult.scope} · 해제 신고 제외 · 총{" "}
+              {fmt(tradeResult.summary.count, "건")} 중 최근 200건까지 표시
+            </p>
+          </>
+        )}
+        {tradeResult?.items?.length ? (
           <Table>
             <TableHeader>
               <TableRow>
@@ -2490,29 +2661,42 @@ function ToolsView({ records, ai }: { records: Estate[]; ai: boolean }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {neighbors.map((x) => (
-                <TableRow key={x.id}>
-                  <TableCell>{x.name}</TableCell>
-                  <TableCell>{fmt(x.area, "㎡")}</TableCell>
-                  <TableCell>{fmt(x.price, "만원")}</TableCell>
+              {tradeResult.items.map((x: ApartmentTrade, index: number) => (
+                <TableRow
+                  key={`${x.apartment}-${x.date}-${x.floor}-${index}`}
+                >
                   <TableCell>
-                    {fmt(
-                      picked?.price != null && x.price != null
-                        ? picked.price - x.price
-                        : null,
-                      "만원",
-                    )}
+                    {x.apartment}
+                    <small className="block">
+                      {x.address || compareDistrict}
+                    </small>
+                  </TableCell>
+                  <TableCell>{fmt(x.area, "㎡")}</TableCell>
+                  <TableCell>{fmt(x.amount, "만원")}</TableCell>
+                  <TableCell>
+                    {fmt(comparePrice - x.amount, "만원")}
                   </TableCell>
                   <TableCell>{x.date}</TableCell>
                   <TableCell>
-                    <LinkOut url={x.url}>{x.summary || x.source}</LinkOut>
+                    {fmt(x.floor, "층")} · {fmt(x.builtYear, "년")}
+                    <br />
+                    <LinkOut url={tradeResult.sourceUrl}>
+                      국토교통부 공공데이터
+                    </LinkOut>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
+        ) : tradeResult ? (
+          <Empty>
+            선택한 기간과 면적 범위에 신고된 비교 거래가 없습니다. 기간을
+            12개월로 늘려보세요.
+          </Empty>
         ) : (
-          <Empty>면적과 가격이 확인된 비교 거래가 아직 없습니다.</Empty>
+          <p className="note">
+            지역·분양가·면적을 확인한 뒤 ‘실거래가 조회’를 누르세요.
+          </p>
         )}
       </section>
       <div className="bottom-grid">

@@ -10,6 +10,7 @@ import {
   syncRuns,
 } from "@/lib/server";
 import { regions, kinds } from "@/lib/estate";
+import { lookupApartmentTrades } from "@/lib/transactions";
 const safeUrl = z
   .string()
   .url()
@@ -133,13 +134,53 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     sameOrigin(req);
-    const user = owner(req);
     if (Number(req.headers.get("content-length") || 0) > 2000000)
       return Response.json(
         { error: "파일은 2MB 이하만 가능합니다." },
         { status: 413 },
       );
     const body: any = await req.json();
+    if (body.action === "transactions") {
+      const input = z
+        .object({
+          region: z.string().refine((value) => value in regions),
+          district: z.string().min(1).max(30),
+          area: z.number().positive().max(1000),
+          months: z.number().int().min(1).max(12),
+          endMonth: z.string().regex(/^\d{4}-\d{2}$/),
+        })
+        .parse(body);
+      if (input.endMonth > new Date().toISOString().slice(0, 7))
+        return Response.json(
+          { error: "조회 종료월은 현재월 이후일 수 없습니다." },
+          { status: 400 },
+        );
+      const key = settings().RTMS_API_KEY || settings().PUBLIC_DATA_KEY;
+      if (!key)
+        return Response.json(
+          { error: "국토교통부 실거래가 API 인증키가 연결되지 않았습니다." },
+          { status: 503 },
+        );
+      try {
+        return Response.json(await lookupApartmentTrades({ ...input, key }));
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : "알 수 없는 오류";
+        const permission =
+          /SERVICE_ACCESS_DENIED|PERMISSION_DENIED|등록되지 않은|권한|SERVICE_KEY/.test(
+            detail,
+          );
+        return Response.json(
+          {
+            error: permission
+              ? "공공데이터포털에서 ‘아파트 매매 실거래가 상세 자료’ 활용신청 후 RTMS_API_KEY를 연결하세요."
+              : "실거래가를 조회하지 못했습니다. 잠시 후 다시 시도하세요.",
+            detail,
+          },
+          { status: permission ? 503 : 502 },
+        );
+      }
+    }
+    const user = owner(req);
     if (body.action === "preferences") {
       const p = z
         .object({
