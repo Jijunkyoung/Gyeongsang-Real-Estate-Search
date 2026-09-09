@@ -99,6 +99,24 @@ test("future supply keeps expected and estimated confidence separate", () => {
   );
   assert.equal(estimated.supplyStatus, "estimated");
 });
+test("past occupancy plans display as confirmed unless explicitly estimated", () => {
+  const base = seed.find((x) => x.id === "lh-taehwa-supply");
+  const past = { ...base, id: "past", year: 2025, status: "입주 예상물량" };
+  assert.equal(
+    supplyFor([past], "울산광역시", "울주군", 2025, "입주").supplyStatus,
+    "confirmed",
+  );
+  assert.equal(
+    supplyFor(
+      [{ ...past, supplyStatus: "estimated", status: "모형 추정" }],
+      "울산광역시",
+      "울주군",
+      2025,
+      "입주",
+    ).supplyStatus,
+    "estimated",
+  );
+});
 test("repeat notices for the same complex are not double counted", () => {
   const whole = seed.find((x) => x.id === "movein-ulsan-laels-2028");
   const result = supplyFor(
