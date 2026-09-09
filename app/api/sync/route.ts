@@ -90,6 +90,7 @@ export async function POST(req: Request) {
         const moveMonth = /^\d{6}$/.test(moveRaw)
           ? `${moveRaw.slice(0, 4)}-${moveRaw.slice(4, 6)}`
           : undefined;
+        const moveYear = moveMonth ? Number(moveMonth.slice(0, 4)) : null;
         const notice: Estate = {
           id: "applyhome-" + id,
           kind: "분양",
@@ -110,7 +111,7 @@ export async function POST(req: Request) {
           important: false,
           units,
           endDate,
-          moveYear: moveMonth ? Number(moveMonth.slice(0, 4)) : null,
+          moveYear,
           moveMonth,
           developer: String(x.CNSTRCT_ENTRPS_NM || ""),
           coverage: "해당 APT 모집공고의 공급물량",
@@ -129,6 +130,26 @@ export async function POST(req: Request) {
             year: Number(date.slice(0, 4)),
             supplyType: "분양",
             coverage: "부분집계",
+            supplyStatus: "confirmed",
+            important: false,
+            endDate: undefined,
+            moveMonth: undefined,
+            schedule: undefined,
+            history: undefined,
+          });
+        if (units !== null && moveYear)
+          all.push({
+            ...notice,
+            id: `applyhome-occupancy-${id}`,
+            kind: "공급량",
+            name: `${String(x.HOUSE_NM)} 입주예정 공급`,
+            year: moveYear,
+            supplyType: "입주",
+            coverage: "부분집계",
+            supplyStatus: "expected",
+            status: "입주 예상물량",
+            summary:
+              "청약홈 모집공고의 입주예정월과 공급세대수를 기준으로 집계한 예상물량입니다. 실제 입주 시기와 물량은 변경될 수 있습니다.",
             important: false,
             endDate: undefined,
             moveMonth: undefined,
