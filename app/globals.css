@@ -107,3 +107,15 @@
 .market-snapshot{margin:18px 0}.snapshot-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:18px}.snapshot-grid article{border:1px solid #e0e7ee;border-radius:8px;padding:15px;display:flex;flex-direction:column;gap:5px;min-width:0}.snapshot-grid span{font-size:14px;color:#5f7383}.snapshot-grid strong{font-size:22px;color:#263f53}.snapshot-grid strong.value-up{color:#b54231}.snapshot-grid strong.value-down{color:#2765ad}.snapshot-grid small{font-size:13px;color:#7d8c98}.snapshot-grid .source-link{margin-top:auto}.value-up{color:#b54231}.value-down{color:#2765ad}@media(max-width:1000px){.snapshot-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){.snapshot-grid{grid-template-columns:1fr}}
 
 .account-menu{display:flex;align-items:center;gap:9px;min-width:0}.account-menu span{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#657785;font-size:12px}.account-menu a{color:#267466;font-size:12px;font-weight:650;white-space:nowrap}.account-menu a:hover{text-decoration:underline}.signin-panel{display:flex;align-items:center;gap:18px}.signin-panel>div{flex:1}.signin-panel p{margin-top:5px}.account-notice{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:7px;background:#eaf3ef;color:#37695e;font-size:13px;margin-bottom:18px}.account-notice b{color:#1d554a}@media(max-width:800px){.account-menu span{display:none}.signin-panel{align-items:flex-start;flex-wrap:wrap}.signin-panel>div{min-width:calc(100% - 50px)}.signin-panel .btn{margin-left:46px}}
+
+/* Official-schedule tones and supply confidence states. */
+.bar{--bar-color:#287b68;background-color:var(--bar-color);box-sizing:border-box}
+.bar.partial{background-color:var(--bar-color);background-image:repeating-linear-gradient(135deg,transparent 0,transparent 5px,#ffffff55 5px,#ffffff55 8px)}
+.bar.expected{--bar-color:#6fa99c}
+.bar.estimated{background:transparent;border:2px dashed #287b68}
+.calendar-day button.rank-one,.filter-chips button.rank-one{background:#005bac;color:#fff;border-color:#005bac}
+.calendar-day button.rank-two,.filter-chips button.rank-two{background:#b9e4fa;color:#164a68;border-color:#8bcdf0}
+.calendar-legend{display:flex;gap:8px;margin:10px 0 16px}
+.calendar-legend span{display:inline-flex;align-items:center;border-radius:4px;padding:4px 10px;font-size:12px;font-weight:700}
+.calendar-legend .rank-one{background:#005bac;color:#fff}
+.calendar-legend .rank-two{background:#b9e4fa;color:#164a68}
