@@ -77,6 +77,28 @@ test("full year total supersedes partial records", () => {
   ];
   assert.equal(supplyFor(all, "울산광역시", "전체", 2026, "분양").value, 2000);
 });
+test("future supply keeps expected and estimated confidence separate", () => {
+  const expected = supplyFor(seed, "울산광역시", "울주군", 2027, "입주");
+  assert.equal(expected.value, 266);
+  assert.equal(expected.supplyStatus, "expected");
+  const base = expected.rows[0];
+  const estimated = supplyFor(
+    [
+      {
+        ...base,
+        id: "estimated",
+        year: 2030,
+        status: "모형 추정",
+        supplyStatus: "estimated",
+      },
+    ],
+    "울산광역시",
+    "울주군",
+    2030,
+    "입주",
+  );
+  assert.equal(estimated.supplyStatus, "estimated");
+});
 test("KOSIS permits map only Yeongnam provinces and keep their meaning", () => {
   const rows = parsePermitRows([
     { C1_NM: "울산", PRD_DE: "2025", DT: "1,234", LST_CHN_DE: "20260206" },
