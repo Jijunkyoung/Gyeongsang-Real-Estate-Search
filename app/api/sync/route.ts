@@ -40,6 +40,7 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     const all: Estate[] = [];
+    const observedScheduleFields = new Set<string>();
     let complete = false;
     for (let page = 1; page <= 10; page++) {
       const url = new URL(
@@ -55,6 +56,9 @@ export async function POST(req: Request) {
       const data = (await response.json()) as any;
       if (!Array.isArray(data.data)) throw Error("응답 형식 확인 필요");
       for (const x of data.data) {
+        Object.keys(x)
+          .filter((field) => /RNK|RCPT|RCEPT|SPSPLY/.test(field))
+          .forEach((field) => observedScheduleFields.add(field));
         const address = String(x.HSSPLY_ADRES || "");
         const r = Object.keys(regions).find(
           (r) =>
@@ -171,6 +175,7 @@ export async function POST(req: Request) {
     return Response.json({
       ok: true,
       count: unique.length,
+      scheduleFields: [...observedScheduleFields].sort(),
       scope: supplyOnly
         ? "청약홈 APT 공고 공급량 · 선택 기간 · 경상권"
         : "청약홈 APT 공고 · 선택 기간 · 경상권",
