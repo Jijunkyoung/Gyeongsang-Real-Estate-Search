@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "영남 부동산 아틀라스",
-  description: "경상권 지역별 분양·정비사업·연도별 공급량 통합 탐색",
+  title: "영남·인천 부동산 아틀라스",
+  description: "영남·인천 지역별 분양·정비사업·연도별 공급량 통합 탐색",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
