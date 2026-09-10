@@ -1,5 +1,7 @@
 name: Refresh official real-estate data
 
+# 2026-09-10: 인천광역시 확장 후 공식자료 전체 역수집을 다시 실행합니다.
+
 on:
   schedule:
     - cron: "15 0 * * *"
