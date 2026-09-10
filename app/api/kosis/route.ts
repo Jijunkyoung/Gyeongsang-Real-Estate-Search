@@ -61,8 +61,7 @@ export async function POST(req: Request) {
     const response = await fetch(url, { signal: AbortSignal.timeout(25000) });
     if (!response.ok) throw new Error("KOSIS 응답 오류");
     const data = (await response.json()) as
-      | KosisRow[]
-      | { err?: string; errMsg?: string };
+      KosisRow[] | { err?: string; errMsg?: string };
     if (!Array.isArray(data))
       return Response.json(
         {
@@ -74,7 +73,7 @@ export async function POST(req: Request) {
     if (!records.length)
       return Response.json(
         {
-          error: "선택한 연도의 경상권 인허가 통계를 찾지 못했습니다.",
+          error: "선택한 연도의 영남·인천 인허가 통계를 찾지 못했습니다.",
           available: data.slice(0, 5).map((row) => ({
             C1: row.C1,
             C1_NM: row.C1_NM,
@@ -113,7 +112,7 @@ export async function POST(req: Request) {
     return Response.json({
       ok: true,
       count: records.length,
-      scope: "KOSIS 지역별 주택건설 인허가 연간통계 · 경상권 시도",
+      scope: "KOSIS 지역별 주택건설 인허가 연간통계 · 영남·인천 6개 시도",
     });
   } catch (error) {
     if (authorized)
