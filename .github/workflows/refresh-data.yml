@@ -25,7 +25,7 @@ jobs:
     env:
       SITE_URL: https://yeongnam-property-atlas.jjk08255.chatgpt.site
     steps:
-      - name: Collect KOSIS and ApplyHome
+      - name: Collect Incheon, KOSIS and ApplyHome
         shell: bash
         run: |
           set -euo pipefail
@@ -54,6 +54,7 @@ jobs:
           today="$(date -u +%F)"
           year="$(date -u +%Y)"
           start_year="$((year - 5))"
+          collect "/api/incheon" '{}'
           collect "/api/kosis" "$(jq -nc --argjson start "${start_year}" --argjson end "${year}" '{startYear:$start,endYear:$end}')"
 
           collect_range() {

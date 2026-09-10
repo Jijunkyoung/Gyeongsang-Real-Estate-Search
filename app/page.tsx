@@ -248,6 +248,7 @@ export default function Home() {
   const [kosisFrom, setKosisFrom] = useState("2020"),
     [kosisTo, setKosisTo] = useState("2025"),
     [kosisSyncing, setKosisSyncing] = useState(false);
+  const [incheonSyncing, setIncheonSyncing] = useState(false);
   async function syncData() {
     setSyncing(true);
     try {
@@ -282,6 +283,24 @@ export default function Home() {
       toast.error((e as Error).message);
     } finally {
       setKosisSyncing(false);
+    }
+  }
+  async function syncIncheon() {
+    setIncheonSyncing(true);
+    try {
+      const r = await fetch("/api/incheon", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const d: any = await r.json();
+      if (!r.ok) throw Error(d.error);
+      toast.success(`${d.count}건의 인천 공식자료를 저장했습니다.`);
+      await reload();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setIncheonSyncing(false);
     }
   }
   async function sendDigest() {
@@ -1451,8 +1470,8 @@ export default function Home() {
                   <h2>실제 자료 연결 절차</h2>
                   <ol>
                     <li>
-                      KOSIS 연간 인허가 통계와 청약홈 APT 공고를 각각
-                      수집합니다.
+                      인천시·주택포털·IFEZ 공식 게시판, KOSIS 연간 인허가
+                      통계와 청약홈 APT 공고를 각각 수집합니다.
                     </li>
                     <li>
                       인증키는 서버 비밀 환경변수에만 저장하며 공개 저장소에는
@@ -1471,6 +1490,22 @@ export default function Home() {
                   <LinkOut url="https://github.com/Jijunkyoung/Gyeongsang-Real-Estate-Search/blob/main/docs/DATA_SETUP.md">
                     항목별 연결 방법과 현재 제공 범위
                   </LinkOut>
+                  <h2>인천 공식자료 수집</h2>
+                  <p className="note">
+                    인천광역시 새소식, 인천 주택포털, 인천경제자유구역청의
+                    재개발·재건축·도시개발·공공주택·분양 관련 공식 게시물 제목과
+                    게시일을 수집합니다. iH와 통합 고시공고는 서버 접근이 안정화될
+                    때까지 출처 링크로 제공하며 자동수집 결과에는 포함하지 않습니다.
+                  </p>
+                  <div className="filters">
+                    <button
+                      className="btn primary"
+                      disabled={incheonSyncing}
+                      onClick={syncIncheon}
+                    >
+                      {incheonSyncing ? "수집 중…" : "인천 공식자료 수집 실행"}
+                    </button>
+                  </div>
                   <h2>KOSIS 연간 인허가 통계 수집</h2>
                   <p className="note">
                     국토교통부 지역별 주택건설 인허가실적에서 영남·인천 6개

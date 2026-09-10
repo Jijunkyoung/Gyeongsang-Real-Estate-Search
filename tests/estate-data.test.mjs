@@ -15,7 +15,7 @@ function load(file) {
         esModuleInterop: true,
       },
     }).outputText,
-    { exports, require: createRequire(url) },
+    { exports, require: createRequire(url), URL },
   );
   return exports;
 }
@@ -23,6 +23,11 @@ const { regions, seed, supplyFor } = load("estate.ts");
 const { optionalCount } = load("data-utils.ts");
 const { parsePermitRows } = load("kosis.ts");
 const { buildApplyhomeSchedule } = load("applyhome.ts");
+const {
+  parseIncheonBoardHtml,
+  isRelevantIncheonTitle,
+  inferIncheonDistrict,
+} = load("incheon-sources.ts");
 const { lawdCodeFor, parseApartmentTrades, recentMonths } =
   load("transactions.ts");
 test("empty upstream counts never become zero", () => {
@@ -197,6 +202,26 @@ test("B-04 uses the official notice date rather than the verification date", () 
   assert.equal(b04.date, "2026-02-26");
   assert.equal(b04.dateType, "official");
   assert.equal(b04.verifiedAt, "2026-09-09");
+});
+test("Incheon official boards keep posting dates and reject false keyword hits", () => {
+  const html = `
+    <table><tbody>
+      <tr><td><a href="/IC010101/view?nttNo=2044795&amp;curPage=1"><span>인천항 내항 1·8부두 재개발 사업계획 공고</span></a></td><td>2025-05-26</td></tr>
+      <tr><td><a href="/IC010101/view?nttNo=22">인재개발원 교육생 모집</a></td><td>2025-05-27</td></tr>
+    </tbody></table>`;
+  const rows = parseIncheonBoardHtml(html, {
+    key: "city-news",
+    name: "인천광역시 새소식",
+    baseUrl: "https://www.incheon.go.kr",
+  });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].id, "incheon-city-news-2044795");
+  assert.equal(rows[0].date, "2025-05-26");
+  assert.equal(rows[0].dateType, "official");
+  assert.equal(rows[0].district, "제물포구");
+  assert.equal(isRelevantIncheonTitle("인재개발원 재개발 교육과정"), false);
+  assert.equal(inferIncheonDistrict("영종 A18블록 주택건설사업"), "영종구");
+  assert.equal(inferIncheonDistrict("청라 공동주택 개발계획"), "서해구");
 });
 test("RTMS district codes cover metro and non-autonomous districts", () => {
   assert.equal(lawdCodeFor("울산광역시", "남구"), "31140");

@@ -200,6 +200,26 @@ export const sources = [
     url: "https://www.incheon.go.kr/",
   },
   {
+    name: "인천광역시 고시공고",
+    type: "정비계획·사업인가·도시계획 공식 고시",
+    url: "http://announce.incheon.go.kr/citynet/jsp/sap/SAPGosiBizProcess.do?command=searchList&flag=gosiGL&svp=Y&sido=ic",
+  },
+  {
+    name: "인천 주택포털",
+    type: "주택정책·공급 공지",
+    url: "https://www.incheon.go.kr/housing/",
+  },
+  {
+    name: "인천경제자유구역청",
+    type: "송도·영종·청라 개발계획·고시",
+    url: "https://www.ifez.go.kr/",
+  },
+  {
+    name: "iH 인천도시공사",
+    type: "도시개발·공공주택·분양",
+    url: "https://www.ih.co.kr/",
+  },
+  {
     name: "LH 청약플러스",
     type: "공공주택 공급계획",
     url: "https://apply.lh.or.kr/",
