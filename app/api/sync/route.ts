@@ -198,8 +198,8 @@ export async function POST(req: Request) {
       count: unique.length,
       scheduleFields: [...observedScheduleFields].sort(),
       scope: supplyOnly
-        ? "청약홈 APT 공고 공급량 · 선택 기간 · 경상권"
-        : "청약홈 APT 공고 · 선택 기간 · 경상권",
+        ? "청약홈 APT 공고 공급량 · 선택 기간 · 영남·인천"
+        : "청약홈 APT 공고 · 선택 기간 · 영남·인천",
     });
   } catch (error) {
     if (authorized)
