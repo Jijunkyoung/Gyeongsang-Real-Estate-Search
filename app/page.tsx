@@ -115,6 +115,7 @@ const labels: Record<string, [number, number]> = {
   부산광역시: [298, 552],
 };
 const population2025: Record<string, number> = {
+  인천광역시: 3_030_000,
   부산광역시: 3_240_000,
   대구광역시: 2_350_000,
   울산광역시: 1_090_000,
@@ -565,7 +566,7 @@ export default function Home() {
             <Building2 size={24} />
           </span>
           <span>
-            영남 부동산<span className="brand-en">PROPERTY ATLAS</span>
+            영남·인천 부동산<span className="brand-en">PROPERTY ATLAS</span>
           </span>
         </a>
         <div className="global-search">
@@ -630,7 +631,9 @@ export default function Home() {
                 </TabsTrigger>
               ))}
           </TabsList>
-          <span className="nav-note">부산 · 울산 · 대구 · 경남 · 경북</span>
+          <span className="nav-note">
+            인천 · 부산 · 울산 · 대구 · 경남 · 경북
+          </span>
         </div>
         <main className="workspace">
           {error && (
@@ -659,12 +662,12 @@ export default function Home() {
           <TabsContent value="overview">
             <div className="page-heading">
               <div>
-                <p className="eyebrow">YEONGNAM / MARKET OVERVIEW</p>
+                <p className="eyebrow">YEONGNAM + INCHEON / MARKET OVERVIEW</p>
                 <h1>
                   지역을 읽고, 변화를 발견하다
                   <span className="accent-dot">.</span>
                 </h1>
-                <p>지도에서 시작하는 경상권 부동산 탐색</p>
+                <p>지도에서 시작하는 영남·인천 부동산 탐색</p>
               </div>
               <button className="btn" onClick={reload} disabled={busy}>
                 <RefreshCw size={16} className={busy ? "spin" : ""} />
@@ -682,7 +685,7 @@ export default function Home() {
             </div>
             <div className="stats">
               {[
-                ["탐색 지역", "5", "개 시·도", "경상권 주요 지역", MapPin],
+                ["탐색 지역", "6", "개 시·도", "영남 5개 시·도와 인천", MapPin],
                 [
                   "분양·임대",
                   String(records.filter((x) => x.kind === "분양").length),
@@ -726,7 +729,7 @@ export default function Home() {
               <section className="panel map-panel">
                 <div className="section-head">
                   <div>
-                    <h2>경상권 지도</h2>
+                    <h2>영남·인천 지도</h2>
                     <p>지역을 선택해 자세히 살펴보세요</p>
                   </div>
                   <span className="subtle-tag">
@@ -746,10 +749,22 @@ export default function Home() {
                       </button>
                     ))}
                   </div>
+                  <button
+                    className={`incheon-inset ${region === "인천광역시" ? "selected" : ""}`}
+                    onClick={() => selectRegion("인천광역시")}
+                    aria-pressed={region === "인천광역시"}
+                    aria-label="인천광역시 선택"
+                  >
+                    <MapPin size={18} />
+                    <span>
+                      <small>수도권 별도 지역</small>
+                      <b>인천광역시</b>
+                    </span>
+                  </button>
                   <svg
                     viewBox="-15 70 500 575"
                     className="region-map"
-                    aria-label="경상권 지역 선택 지도"
+                    aria-label="영남권 지역 선택 지도와 인천광역시 별도 선택 영역"
                   >
                     <defs>
                       <pattern
@@ -837,8 +852,8 @@ export default function Home() {
                     </text>
                   </svg>
                   <div className="map-caption">
-                    통계청 2013 경계 기반 개략 지도 · 군위군은 목록에서 대구로
-                    분류
+                    영남권은 통계청 2013 경계 기반 개략 지도 · 인천은 별도 선택
+                    카드 · 군위군은 목록에서 대구로 분류
                     <br />
                     사업구역 경계·토지 경계로 사용하지 마세요.
                   </div>
@@ -1141,7 +1156,8 @@ export default function Home() {
                           s.rows.map((x) => (
                             <div key={x.id}>
                               <LinkOut url={x.url}>
-                                {x.name} · {fmt(x.units, "호")} ({x.source} · {x.date})
+                                {x.name} · {fmt(x.units, "호")} ({x.source} ·{" "}
+                                {x.date})
                               </LinkOut>
                             </div>
                           ))
@@ -1457,9 +1473,9 @@ export default function Home() {
                   </LinkOut>
                   <h2>KOSIS 연간 인허가 통계 수집</h2>
                   <p className="note">
-                    국토교통부 지역별 주택건설 인허가실적에서 경상권 5개 시도의
-                    연간 전체값을 가져옵니다. 현재 공식 확정자료 범위 안에서
-                    선택하세요.
+                    국토교통부 지역별 주택건설 인허가실적에서 영남·인천 6개
+                    시도의 연간 전체값을 가져옵니다. 현재 공식 확정자료 범위
+                    안에서 선택하세요.
                   </p>
                   <div className="filters">
                     <input
@@ -1686,7 +1702,7 @@ export default function Home() {
         </main>
       </Tabs>
       <footer>
-        <span>영남 부동산 아틀라스</span>
+        <span>영남·인천 부동산 아틀라스</span>
         <span>
           공식자료 우선 · 출처와 기준일 확인 · 확인 자료는 2026.09.07에 수집
         </span>
@@ -2507,8 +2523,8 @@ function ToolsView({ records, ai }: { records: Estate[]; ai: boolean }) {
         <h2>분양가와 주변 실거래가 비교</h2>
         <p className="note">
           국토교통부의 아파트 매매 신고자료에서 같은 시군구, 전용면적 ±10%의
-          최근 거래를 직접 조회합니다. 비교할 분양 단지가 없어도 분양가와
-          면적을 직접 입력할 수 있습니다.
+          최근 거래를 직접 조회합니다. 비교할 분양 단지가 없어도 분양가와 면적을
+          직접 입력할 수 있습니다.
         </p>
         <Select value={unit} onValueChange={pickUnit}>
           <SelectTrigger className="picker" aria-label="분양 단지 선택">
@@ -2598,9 +2614,7 @@ function ToolsView({ records, ai }: { records: Estate[]; ai: boolean }) {
             <button
               className="btn primary"
               onClick={lookupTrades}
-              disabled={
-                tradeLoading || comparePrice <= 0 || compareArea <= 0
-              }
+              disabled={tradeLoading || comparePrice <= 0 || compareArea <= 0}
             >
               {tradeLoading ? (
                 <RefreshCw className="spin" size={16} />
@@ -2662,9 +2676,7 @@ function ToolsView({ records, ai }: { records: Estate[]; ai: boolean }) {
             </TableHeader>
             <TableBody>
               {tradeResult.items.map((x: ApartmentTrade, index: number) => (
-                <TableRow
-                  key={`${x.apartment}-${x.date}-${x.floor}-${index}`}
-                >
+                <TableRow key={`${x.apartment}-${x.date}-${x.floor}-${index}`}>
                   <TableCell>
                     {x.apartment}
                     <small className="block">
@@ -2673,9 +2685,7 @@ function ToolsView({ records, ai }: { records: Estate[]; ai: boolean }) {
                   </TableCell>
                   <TableCell>{fmt(x.area, "㎡")}</TableCell>
                   <TableCell>{fmt(x.amount, "만원")}</TableCell>
-                  <TableCell>
-                    {fmt(comparePrice - x.amount, "만원")}
-                  </TableCell>
+                  <TableCell>{fmt(comparePrice - x.amount, "만원")}</TableCell>
                   <TableCell>{x.date}</TableCell>
                   <TableCell>
                     {fmt(x.floor, "층")} · {fmt(x.builtYear, "년")}
