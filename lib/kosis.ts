@@ -1,6 +1,8 @@
 import type { Estate } from "./estate";
 
 const regionNames: Record<string, string> = {
+  인천: "인천광역시",
+  인천광역시: "인천광역시",
   부산: "부산광역시",
   부산광역시: "부산광역시",
   대구: "대구광역시",
