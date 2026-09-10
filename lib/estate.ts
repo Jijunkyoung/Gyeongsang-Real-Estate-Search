@@ -1,6 +1,19 @@
 import verifiedData from "./verified-data.json";
 export const regions: Record<string, string[]> = {
   울산광역시: ["중구", "남구", "동구", "북구", "울주군"],
+  인천광역시: [
+    "제물포구",
+    "영종구",
+    "미추홀구",
+    "연수구",
+    "남동구",
+    "부평구",
+    "계양구",
+    "서해구",
+    "검단구",
+    "강화군",
+    "옹진군",
+  ],
   부산광역시: [
     "중구",
     "서구",
@@ -180,6 +193,11 @@ export const sources = [
     name: "경상북도",
     type: "주택·도시개발 공고",
     url: "https://www.gb.go.kr/",
+  },
+  {
+    name: "인천광역시",
+    type: "도시·주택·토지·고시공고",
+    url: "https://www.incheon.go.kr/",
   },
   {
     name: "LH 청약플러스",
