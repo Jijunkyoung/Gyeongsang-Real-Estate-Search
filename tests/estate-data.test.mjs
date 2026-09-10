@@ -19,11 +19,12 @@ function load(file) {
   );
   return exports;
 }
-const { seed, supplyFor } = load("estate.ts");
+const { regions, seed, supplyFor } = load("estate.ts");
 const { optionalCount } = load("data-utils.ts");
 const { parsePermitRows } = load("kosis.ts");
 const { buildApplyhomeSchedule } = load("applyhome.ts");
-const { lawdCodeFor, parseApartmentTrades, recentMonths } = load("transactions.ts");
+const { lawdCodeFor, parseApartmentTrades, recentMonths } =
+  load("transactions.ts");
 test("empty upstream counts never become zero", () => {
   for (const v of [undefined, null, "", "  ", true, -1, "abc"])
     assert.equal(optionalCount(v), null);
@@ -138,7 +139,7 @@ test("repeat notices for the same complex are not double counted", () => {
   assert.equal(result.value, 2033);
   assert.equal(result.rows.length, 1);
 });
-test("KOSIS permits map only Yeongnam provinces and keep their meaning", () => {
+test("KOSIS permits map Yeongnam and Incheon provinces and keep their meaning", () => {
   const rows = parsePermitRows([
     { C1_NM: "울산", PRD_DE: "2025", DT: "1,234", LST_CHN_DE: "20260206" },
     { C1_NM: "서울", PRD_DE: "2025", DT: "999" },
@@ -152,6 +153,10 @@ test("KOSIS permits map only Yeongnam provinces and keep their meaning", () => {
   assert.equal(
     parsePermitRows([{ NM: "부산", PRD_DE: "2024", DT: "10" }])[0].region,
     "부산광역시",
+  );
+  assert.equal(
+    parsePermitRows([{ NM: "인천", PRD_DE: "2024", DT: "20" }])[0].region,
+    "인천광역시",
   );
 });
 test("ApplyHome dates keep special supply and priority rounds separate", () => {
@@ -195,6 +200,20 @@ test("B-04 uses the official notice date rather than the verification date", () 
 });
 test("RTMS district codes cover metro and non-autonomous districts", () => {
   assert.equal(lawdCodeFor("울산광역시", "남구"), "31140");
+  assert.equal(lawdCodeFor("인천광역시", "연수구"), "28185");
+  assert.deepEqual(JSON.parse(JSON.stringify(regions["인천광역시"])), [
+    "제물포구",
+    "영종구",
+    "미추홀구",
+    "연수구",
+    "남동구",
+    "부평구",
+    "계양구",
+    "서해구",
+    "검단구",
+    "강화군",
+    "옹진군",
+  ]);
   assert.equal(lawdCodeFor("경상남도", "창원시 성산구"), "48123");
   assert.equal(lawdCodeFor("경상남도", "창원시"), null);
 });
@@ -211,6 +230,9 @@ test("RTMS XML parser normalizes trades and excludes cancellations", () => {
 });
 test("RTMS month range crosses year boundaries", () => {
   assert.deepEqual(JSON.parse(JSON.stringify(recentMonths("2026-02", 4))), [
-    "202602", "202601", "202512", "202511",
+    "202602",
+    "202601",
+    "202512",
+    "202511",
   ]);
 });
