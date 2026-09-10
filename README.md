@@ -1,10 +1,10 @@
-# 영남 부동산 아틀라스
+# 영남·인천 부동산 아틀라스
 
-Public real estate research workspace covering Ulsan, Busan, Daegu, Gyeongnam and Gyeongbuk.
+Public real estate research workspace covering Incheon, Ulsan, Busan, Daegu, Gyeongnam and Gyeongbuk.
 
 ## Implemented
 
-- Clickable province map and current named municipality selectors, searchable regional records and detail/history sheets.
+- Clickable Yeongnam province map, a separate Incheon inset, current named municipality selectors, searchable regional records and detail/history sheets.
 - Up to five combined region/unit comparison slots, supply-year comparison, price-per-area calculation, same-metric/same-date rankings.
 - Annual supply by sale, occupancy and permit; unavailable values remain null; published regional totals supersede partial records. District aggregates are not double-counted with their constituent records. Province partial aggregates are not summed with potentially overlapping district records. Importers must keep record IDs stable for revisions.
 - Persistent D1 records and user-scoped favorites/alert preferences, validated JSON import/export and form editing.
@@ -18,7 +18,7 @@ This is an initial working application, not a complete live market feed. Seed re
 - `KOSIS_API_KEY` enables administrator-triggered import of the KOSIS annual province-level housing permit series. `PUBLIC_DATA_KEY` enables the bounded `/api/sync` APT notice adapter. `RTMS_API_KEY` enables the public, bounded apartment sale comparison lookup and falls back to `PUBLIC_DATA_KEY` when that key has also been approved for the RTMS API. These are different series: permits and notices are not occupancy totals. Automatic scheduling, district-level complete supply, and market-index adapters remain unimplemented.
 - `UPSTAGE_API_KEY` enables server-only Solar chat completions and takes precedence over the optional OpenAI fallback. `UPSTAGE_MODEL` defaults to `solar-pro2`. Without an AI key, the endpoint explicitly returns evidence search rather than generated text.
 - Alert preference storage and in-site watchlist filtering work. RESEND_API_KEY and EMAIL_FROM enable a manual, authenticated own-account digest endpoint. No credentials were supplied and sending is untested/inactive. Background scheduling is not implemented or active. Email input stores a preference; sending requires a separate explicit button action and a configured service.
-- The map uses KOSTAT 2013 province geometry from https://github.com/southkorea/southkorea-maps/tree/master/kostat/2013 . It is labeled as a historical schematic; Gunwi is assigned to Daegu in the current text selectors. It does not establish cadastral/project boundaries. A current geometry dataset is needed for precise administrative maps.
+- The Yeongnam map uses KOSTAT 2013 province geometry from https://github.com/southkorea/southkorea-maps/tree/master/kostat/2013 . Incheon is geographically separate and is therefore shown as a dedicated inset instead of being placed incorrectly on that map. It is labeled as a historical schematic; Gunwi is assigned to Daegu in the current text selectors. It does not establish cadastral/project boundaries. A current geometry dataset is needed for precise administrative maps.
 - Site records are publicly readable. Favorites and alert preferences require Sign in with ChatGPT and are stored separately under each normalized login email. Source-record editing and automatic collection require the configured administrator user ID; writes also check Origin.
 - Checklist and comparison selections are transient UI state. Authoritative records/favorites use D1.
 
