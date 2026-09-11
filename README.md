@@ -10,6 +10,7 @@ Public real estate research workspace covering Incheon, Ulsan, Busan, Daegu, Gye
 - Persistent D1 records and user-scoped favorites/alert preferences, validated JSON import/export and form editing.
 - Date-based calendar, ICS download, loan/cash planning, area-matched recorded transaction comparisons, glossary/checklist.
 - Evidence search and optional server-only Upstage Solar/OpenAI answers with record citations.
+- On-demand district and zoning-type legal restriction lookup through the approved MOLIT Land Use Regulation Law Information API.
 - Daily ingestion of relevant titles and official posting dates from Incheon City News, the Incheon Housing Portal and IFEZ, with stable IDs, duplicate updates and district classification.
 
 ## Integration status and limits

@@ -70,6 +70,8 @@ import {
   type Estate,
 } from "@/lib/estate";
 import type { ApartmentTrade } from "@/lib/transactions";
+import { commonLandZones } from "@/lib/land-law";
+import type { LandLawItem } from "@/lib/land-law-parser";
 type TradeLookup = {
   items: ApartmentTrade[];
   summary: {
@@ -79,6 +81,14 @@ type TradeLookup = {
     minimum: number | null;
     maximum: number | null;
   };
+  scope: string;
+  source: string;
+  sourceUrl: string;
+  error?: string;
+  detail?: string;
+};
+type LandLawLookup = {
+  items: LandLawItem[];
   scope: string;
   source: string;
   sourceUrl: string;
@@ -2357,6 +2367,11 @@ function ToolsView({ records, ai }: { records: Estate[]; ai: boolean }) {
     [compareMonths, setCompareMonths] = useState("6"),
     [tradeResult, setTradeResult] = useState<TradeLookup | null>(null),
     [tradeLoading, setTradeLoading] = useState(false);
+  const [lawRegion, setLawRegion] = useState("인천광역시"),
+    [lawDistrict, setLawDistrict] = useState("연수구"),
+    [lawZone, setLawZone] = useState("UQA123"),
+    [lawResult, setLawResult] = useState<LandLawLookup | null>(null),
+    [lawLoading, setLawLoading] = useState(false);
   const compareDistricts = regions[compareRegion].filter(
     (x) => x !== "창원시" && x !== "포항시",
   );
@@ -2401,6 +2416,32 @@ function ToolsView({ records, ai }: { records: Estate[]; ai: boolean }) {
       );
     } finally {
       setTradeLoading(false);
+    }
+  }
+  async function lookupLandLaws() {
+    setLawLoading(true);
+    setLawResult(null);
+    try {
+      const response = await fetch("/api/estate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "landLaw",
+          region: lawRegion,
+          district: lawDistrict,
+          ucode: lawZone,
+        }),
+      });
+      const data = (await response.json()) as LandLawLookup;
+      if (!response.ok)
+        throw Error([data.error, data.detail].filter(Boolean).join(" "));
+      setLawResult(data);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "토지이용 규제법령 조회 실패",
+      );
+    } finally {
+      setLawLoading(false);
     }
   }
   const interest = rate / 100 / 12,
@@ -2743,6 +2784,117 @@ function ToolsView({ records, ai }: { records: Estate[]; ai: boolean }) {
             지역·분양가·면적을 확인한 뒤 ‘실거래가 조회’를 누르세요.
           </p>
         )}
+      </section>
+      <section className="panel margin-top">
+        <h2>지역별 토지이용 규제·법령 조회</h2>
+        <p className="note">
+          국토교통부 공식 API에서 선택한 시군구와 용도지역에 적용되는 법령·조례
+          행위제한을 조회합니다. 개별 필지의 실제 용도지역을 먼저 토지이음에서
+          확인해야 하며, 이 결과는 재개발·재건축 사업 승인 여부를 뜻하지 않습니다.
+        </p>
+        <div className="form-grid comparison-form">
+          <label className="field">
+            지역
+            <Pick
+              value={lawRegion}
+              onChange={(value) => {
+                setLawRegion(value);
+                setLawDistrict(
+                  regions[value].find(
+                    (item) => item !== "창원시" && item !== "포항시",
+                  ) || "",
+                );
+                setLawResult(null);
+              }}
+              options={Object.keys(regions)}
+              label="규제법령 조회 지역"
+            />
+          </label>
+          <label className="field">
+            시·군·구
+            <Pick
+              value={lawDistrict}
+              onChange={(value) => {
+                setLawDistrict(value);
+                setLawResult(null);
+              }}
+              options={regions[lawRegion].filter(
+                (item) => item !== "창원시" && item !== "포항시",
+              )}
+              label="규제법령 조회 시군구"
+            />
+          </label>
+          <label className="field">
+            용도지역
+            <Select value={lawZone} onValueChange={setLawZone}>
+              <SelectTrigger className="picker" aria-label="용도지역 선택">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {commonLandZones.map(([code, name]) => (
+                  <SelectItem key={code} value={code}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+          <div className="field comparison-action">
+            <span>공식자료 조회</span>
+            <button
+              className="btn primary"
+              onClick={lookupLandLaws}
+              disabled={lawLoading}
+            >
+              {lawLoading ? (
+                <RefreshCw className="spin" size={16} />
+              ) : (
+                <BookOpen size={16} />
+              )}
+              {lawLoading ? "조회 중…" : "규제법령 조회"}
+            </button>
+          </div>
+        </div>
+        {lawResult && (
+          <p className="note">
+            {lawResult.scope} · {fmt(lawResult.items.length, "건")} ·{" "}
+            <LinkOut url={lawResult.sourceUrl}>{lawResult.source}</LinkOut>
+          </p>
+        )}
+        {lawResult?.items?.length ? (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>지역·지구</TableHead>
+                <TableHead>법령 단계</TableHead>
+                <TableHead>행위제한 내용</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {lawResult.items.map((item, index) => (
+                <TableRow key={`${item.ucode}-${item.lawCode}-${index}`}>
+                  <TableCell>
+                    {item.zoneName || item.ucode}
+                    <small className="block">{item.ucode}</small>
+                  </TableCell>
+                  <TableCell>
+                    {{ "0": "법률", "1": "시행령", "2": "시행규칙", "3": "조례" }[
+                      item.level
+                    ] || `단계 ${item.level || "미표시"}`}
+                  </TableCell>
+                  <TableCell style={{ whiteSpace: "pre-wrap" }}>
+                    {item.contents}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : lawResult ? (
+          <Empty>
+            선택한 시군구와 용도지역에 제공된 규제법령이 없습니다. 필지의 실제
+            용도지역을 확인해 다시 조회하세요.
+          </Empty>
+        ) : null}
       </section>
       <div className="bottom-grid">
         <section className="panel">

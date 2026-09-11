@@ -23,6 +23,7 @@ const { regions, seed, supplyFor } = load("estate.ts");
 const { optionalCount } = load("data-utils.ts");
 const { parsePermitRows } = load("kosis.ts");
 const { buildApplyhomeSchedule } = load("applyhome.ts");
+const { parseLandLawXml } = load("land-law-parser.ts");
 const {
   parseIncheonBoardHtml,
   isRelevantIncheonTitle,
@@ -222,6 +223,19 @@ test("Incheon official boards keep posting dates and reject false keyword hits",
   assert.equal(isRelevantIncheonTitle("인재개발원 재개발 교육과정"), false);
   assert.equal(inferIncheonDistrict("영종 A18블록 주택건설사업"), "영종구");
   assert.equal(inferIncheonDistrict("청라 공동주택 개발계획"), "서해구");
+});
+test("land-use law XML keeps the zone and legal restriction text", () => {
+  const items = parseLandLawXml(`
+    <response><header><resultCode>0</resultCode><resultMsg>OK</resultMsg></header>
+      <body><items><item><UCODE>UQA123</UCODE><UNAME>제3종일반주거지역</UNAME>
+      <LAW_CONTENTS><![CDATA[「국토계획법」에 따른 행위제한]]></LAW_CONTENTS>
+      <LAW_LEVEL>0</LAW_LEVEL><LAW_FULL_CD>LAW-1</LAW_FULL_CD></item></items></body>
+    </response>`);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].ucode, "UQA123");
+  assert.equal(items[0].zoneName, "제3종일반주거지역");
+  assert.equal(items[0].contents, "「국토계획법」에 따른 행위제한");
+  assert.equal(items[0].level, "0");
 });
 test("RTMS district codes cover metro and non-autonomous districts", () => {
   assert.equal(lawdCodeFor("울산광역시", "남구"), "31140");

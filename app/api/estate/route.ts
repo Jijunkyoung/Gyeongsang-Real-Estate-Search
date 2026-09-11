@@ -11,6 +11,7 @@ import {
 } from "@/lib/server";
 import { regions, kinds } from "@/lib/estate";
 import { lookupApartmentTrades } from "@/lib/transactions";
+import { commonLandZones, lookupLandLaw } from "@/lib/land-law";
 const safeUrl = z
   .string()
   .url()
@@ -140,6 +141,44 @@ export async function POST(req: Request) {
         { status: 413 },
       );
     const body: any = await req.json();
+    if (body.action === "landLaw") {
+      const input = z
+        .object({
+          region: z.string().refine((value) => value in regions),
+          district: z.string().min(1).max(30),
+          ucode: z.string().regex(/^U[A-Z]{2}\d{3}$/),
+        })
+        .parse(body);
+      if (!commonLandZones.some(([code]) => code === input.ucode))
+        return Response.json(
+          { error: "지원하는 지역·지구 코드를 선택하세요." },
+          { status: 400 },
+        );
+      const key = settings().PUBLIC_DATA_KEY;
+      if (!key)
+        return Response.json(
+          { error: "토지이용규제법령 API 인증키가 연결되지 않았습니다." },
+          { status: 503 },
+        );
+      try {
+        return Response.json(await lookupLandLaw({ ...input, key }));
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : "알 수 없는 오류";
+        const permission =
+          /SERVICE_ACCESS_DENIED|PERMISSION_DENIED|등록되지 않은|권한|SERVICE_KEY/.test(
+            detail,
+          );
+        return Response.json(
+          {
+            error: permission
+              ? "공공데이터포털의 토지이용규제법령정보서비스 승인 상태를 확인하세요."
+              : "토지이용 규제법령을 조회하지 못했습니다.",
+            detail,
+          },
+          { status: permission ? 503 : 502 },
+        );
+      }
+    }
     if (body.action === "transactions") {
       const input = z
         .object({
