@@ -63,6 +63,36 @@ const item = z
       )
       .max(30)
       .optional(),
+    houseManageNo: z.string().max(30).optional(),
+    pblancNo: z.string().max(30).optional(),
+    competition: z
+      .object({
+        checkedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        general: z
+          .array(
+            z.object({
+              housingType: z.string().max(100),
+              rank: z.enum(["1순위", "2순위"]),
+              residence: z.string().max(100),
+              supplied: z.number().int().nonnegative().nullable(),
+              applicants: z.number().int().nonnegative().nullable(),
+              rate: z.number().nonnegative().nullable(),
+              rateText: z.string().max(100),
+            }),
+          )
+          .max(500),
+        special: z
+          .array(
+            z.object({
+              housingType: z.string().max(100),
+              supplied: z.number().int().nonnegative().nullable(),
+              applicants: z.number().int().nonnegative().nullable(),
+              result: z.string().max(200),
+            }),
+          )
+          .max(200),
+      })
+      .optional(),
     history: z
       .array(z.object({ date: z.string().max(20), text: z.string().max(1000) }))
       .max(100)

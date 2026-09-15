@@ -146,6 +146,26 @@ export type Estate = {
   lat?: number | null;
   lng?: number | null;
   schedule?: { date: string; label: string }[];
+  houseManageNo?: string;
+  pblancNo?: string;
+  competition?: {
+    checkedAt: string;
+    general: {
+      housingType: string;
+      rank: "1순위" | "2순위";
+      residence: string;
+      supplied: number | null;
+      applicants: number | null;
+      rate: number | null;
+      rateText: string;
+    }[];
+    special: {
+      housingType: string;
+      supplied: number | null;
+      applicants: number | null;
+      result: string;
+    }[];
+  };
   history?: { date: string; text: string }[];
 };
 export const sources = [

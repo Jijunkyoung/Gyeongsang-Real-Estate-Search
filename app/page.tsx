@@ -117,6 +117,28 @@ const calendarEventClass = (label: string) =>
     : label.startsWith("2순위")
       ? "rank-two"
       : "";
+const applicationCloseDate = (record: Estate) => {
+  if (record.endDate) return record.endDate;
+  return (record.schedule || [])
+    .filter((item) => /접수/.test(item.label))
+    .map((item) => item.date)
+    .sort()
+    .at(-1);
+};
+const isClosedApplication = (record: Estate) => {
+  const closeDate = applicationCloseDate(record);
+  return (
+    record.kind === "분양" &&
+    !!closeDate &&
+    closeDate < new Date().toISOString().slice(0, 10)
+  );
+};
+const maxCompetitionRate = (record: Estate, rank: "1순위" | "2순위") => {
+  const values = (record.competition?.general || [])
+    .filter((row) => row.rank === rank && row.rate !== null)
+    .map((row) => row.rate as number);
+  return values.length ? Math.max(...values) : null;
+};
 const labels: Record<string, [number, number]> = {
   경상북도: [270, 250],
   대구광역시: [217, 384],
@@ -1778,6 +1800,7 @@ export default function Home() {
                     </div>
                   ))}
                 </dl>
+                <CompetitionDetail record={detail} />
                 <h3>확인 이력</h3>
                 {detail.history?.length ? (
                   <ol className="timeline">
@@ -2269,6 +2292,7 @@ function CalendarView({
                     >
                       {event.record.name}
                       <small>{event.label}</small>
+                      <CompetitionBadges record={event.record} compact />
                     </button>
                   ))}
               </div>
@@ -2316,7 +2340,10 @@ function CalendarView({
                 className="text-button"
                 onClick={() => detail(event.record)}
               >
-                {event.record.name} · {event.label}
+                <span>
+                  {event.record.name} · {event.label}
+                  <CompetitionBadges record={event.record} />
+                </span>
               </button>
               <button
                 className="btn"
@@ -2347,6 +2374,116 @@ function CalendarView({
     </>
   );
 }
+
+function CompetitionBadges({
+  record,
+  compact = false,
+}: {
+  record: Estate;
+  compact?: boolean;
+}) {
+  if (!isClosedApplication(record)) return null;
+  const first = maxCompetitionRate(record, "1순위");
+  const second = maxCompetitionRate(record, "2순위");
+  const special = record.competition?.special || [];
+  const specialSupplied = special.reduce(
+    (sum, row) => sum + (row.supplied || 0),
+    0,
+  );
+  const specialApplicants = special.reduce(
+    (sum, row) => sum + (row.applicants || 0),
+    0,
+  );
+  const hasResult =
+    first !== null ||
+    second !== null ||
+    special.some((row) => row.applicants !== null);
+  return (
+    <span className={`competition-badges${compact ? " compact" : ""}`}>
+      {first !== null && <span className="rank-one">1순위 최고 {first}:1</span>}
+      {second !== null && <span className="rank-two">2순위 최고 {second}:1</span>}
+      {special.some((row) => row.applicants !== null) && (
+        <span className="special-result">
+          특공 {fmt(specialApplicants, "건")} / {fmt(specialSupplied, "호")}
+        </span>
+      )}
+      {!hasResult && (
+        <span className="pending-result">
+          {record.competition ? "공식 결과 미제공" : "경쟁률 집계 대기"}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function CompetitionDetail({ record }: { record: Estate }) {
+  if (!isClosedApplication(record)) return null;
+  const competition = record.competition;
+  return (
+    <section className="competition-detail">
+      <h3>마감 청약 경쟁률</h3>
+      <CompetitionBadges record={record} />
+      {!competition ? (
+        <p className="note">
+          청약홈 경쟁률 자료가 아직 수집되지 않았습니다. 다음 자동수집에서 다시
+          확인하며, 아래 청약홈 원문에서도 확인할 수 있습니다.
+        </p>
+      ) : (
+        <>
+          <p className="note">
+            순위 배지는 주택형·거주지역별 공식 경쟁률 중 최고값입니다. 미달 표기와
+            세부 값은 아래 원문 행을 확인하세요. 자료 확인 {competition.checkedAt}
+          </p>
+          {competition.general.length ? (
+            <div className="competition-table-wrap">
+              <table className="competition-table">
+                <thead><tr><th>주택형</th><th>순위</th><th>거주지역</th><th>공급</th><th>접수</th><th>경쟁률</th></tr></thead>
+                <tbody>
+                  {competition.general.map((row, index) => (
+                    <tr key={`${row.housingType}-${row.rank}-${row.residence}-${index}`}>
+                      <td>{row.housingType}</td><td>{row.rank}</td><td>{row.residence}</td>
+                      <td>{fmt(row.supplied, "호")}</td><td>{fmt(row.applicants, "건")}</td><td>{row.rateText}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="note">청약홈에서 공개한 일반공급 경쟁률 행이 없습니다.</p>
+          )}
+          {competition.special.length > 0 && (
+            <>
+              <h3 className="competition-subhead">특별공급 신청현황</h3>
+              <div className="competition-table-wrap">
+                <table className="competition-table">
+                  <thead><tr><th>주택형</th><th>배정</th><th>신청</th><th>결과</th></tr></thead>
+                  <tbody>
+                    {competition.special.map((row, index) => (
+                      <tr key={`${row.housingType}-special-${index}`}>
+                        <td>{row.housingType}</td><td>{fmt(row.supplied, "호")}</td>
+                        <td>{fmt(row.applicants, "건")}</td><td>{row.result || "미표기"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+          {record.houseManageNo && record.pblancNo && (
+            <p className="competition-source">
+              <LinkOut
+                url={`https://www.applyhome.co.kr/ai/aia/selectAPTCompetitionPopup.do?houseManageNo=${encodeURIComponent(record.houseManageNo)}&pblancNo=${encodeURIComponent(record.pblancNo)}`}
+              >
+                청약홈 공식 경쟁률 원문
+              </LinkOut>
+            </p>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 function ToolsView({ records, ai }: { records: Estate[]; ai: boolean }) {
   const [question, setQuestion] = useState(""),
     [answer, setAnswer] = useState<any>(null),

@@ -22,7 +22,11 @@ function load(file) {
 const { regions, seed, supplyFor } = load("estate.ts");
 const { optionalCount } = load("data-utils.ts");
 const { parsePermitRows } = load("kosis.ts");
-const { buildApplyhomeSchedule } = load("applyhome.ts");
+const {
+  buildApplyhomeSchedule,
+  parseApplyhomeCompetitionRows,
+  parseApplyhomeSpecialRows,
+} = load("applyhome.ts");
 const { parseLandLawXml } = load("land-law-parser.ts");
 const {
   parseIncheonBoardHtml,
@@ -197,6 +201,48 @@ test("ApplyHome legacy priority date aliases remain compatible", () => {
       { date: "2026-10-02", label: "2순위 접수 · 기타지역" },
     ],
   );
+});
+test("ApplyHome competition keeps rank, residence and shortage text separate", () => {
+  const rows = parseApplyhomeCompetitionRows([
+    {
+      HOUSE_TY: "084.7415A",
+      SUBSCRPT_RANK_CODE: 1,
+      RESIDE_SENM: "해당지역",
+      SUPLY_HSHLDCO: 30,
+      REQ_CNT: "1,200",
+      CMPET_RATE: "40.00",
+    },
+    {
+      HOUSE_TY: "084.7415A",
+      SUBSCRPT_RANK_CODE: 2,
+      RESIDE_SENM: "기타지역",
+      SUPLY_HSHLDCO: 30,
+      REQ_CNT: "5",
+      CMPET_RATE: "(△25)",
+    },
+  ]);
+  assert.equal(rows[0].rank, "1순위");
+  assert.equal(rows[0].applicants, 1200);
+  assert.equal(rows[0].rate, 40);
+  assert.equal(rows[1].rank, "2순위");
+  assert.equal(rows[1].rate, null);
+  assert.equal(rows[1].rateText, "(△25)");
+});
+test("ApplyHome special supply sums official application-count fields", () => {
+  const [row] = parseApplyhomeSpecialRows([
+    {
+      HOUSE_TY: "059A",
+      SPSPLY_HSHLDCO: 20,
+      CRSPAREA_MNYCH_CNT: 3,
+      ETC_AREA_MNYCH_CNT: 2,
+      CRSPAREA_NWWDS_NMTW_CNT: 15,
+      INSTT_RECOMEND_DCSN_CNT: 1,
+      SUBSCRPT_RESULT_NM: "청약 접수 종료",
+    },
+  ]);
+  assert.equal(row.supplied, 20);
+  assert.equal(row.applicants, 21);
+  assert.equal(row.result, "청약 접수 종료");
 });
 test("B-04 uses the official notice date rather than the verification date", () => {
   const b04 = seed.find((item) => item.id === "ulsan-b04");

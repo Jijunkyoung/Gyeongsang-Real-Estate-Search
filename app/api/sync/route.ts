@@ -1,4 +1,5 @@
 import {
+  allRecords,
   database,
   recordSync,
   requireCollector,
@@ -10,7 +11,82 @@ import { regions, type Estate } from "@/lib/estate";
 import {
   buildApplyhomeSchedule,
   normalizeApplyhomeDate,
+  parseApplyhomeCompetitionRows,
+  parseApplyhomeSpecialRows,
 } from "@/lib/applyhome";
+
+async function applyhomeResultRows(
+  endpoint: "getAPTLttotPblancCmpet" | "getAPTSpsplyReqstStus",
+  key: string,
+  houseManageNo: string,
+  pblancNo: string,
+) {
+  const url = new URL(
+    `https://api.odcloud.kr/api/ApplyhomeInfoCmpetRtSvc/v1/${endpoint}`,
+  );
+  url.searchParams.set("serviceKey", key);
+  url.searchParams.set("page", "1");
+  url.searchParams.set("perPage", "1000");
+  url.searchParams.set("cond[HOUSE_MANAGE_NO::EQ]", houseManageNo);
+  url.searchParams.set("cond[PBLANC_NO::EQ]", pblancNo);
+  const response = await fetch(url, { signal: AbortSignal.timeout(20000) });
+  if (!response.ok)
+    throw Error(`경쟁률 공공데이터 응답 오류 (${response.status})`);
+  const body = (await response.json()) as { data?: unknown[] };
+  if (!Array.isArray(body.data)) throw Error("경쟁률 응답 형식 확인 필요");
+  return body.data as Record<string, unknown>[];
+}
+
+async function enrichClosedCompetitions(
+  records: Estate[],
+  key: string,
+  previous: Map<string, Estate>,
+) {
+  const today = new Date().toISOString().slice(0, 10);
+  const targets = records.filter(
+    (record) =>
+      record.kind === "분양" &&
+      record.endDate &&
+      record.endDate <= today &&
+      record.houseManageNo &&
+      record.pblancNo,
+  );
+  let fetched = 0;
+  let failed = 0;
+  for (let offset = 0; offset < targets.length; offset += 4) {
+    await Promise.all(
+      targets.slice(offset, offset + 4).map(async (record) => {
+        const oldCompetition = previous.get(record.id)?.competition;
+        if (oldCompetition) record.competition = oldCompetition;
+        try {
+          const [general, special] = await Promise.all([
+            applyhomeResultRows(
+              "getAPTLttotPblancCmpet",
+              key,
+              record.houseManageNo!,
+              record.pblancNo!,
+            ),
+            applyhomeResultRows(
+              "getAPTSpsplyReqstStus",
+              key,
+              record.houseManageNo!,
+              record.pblancNo!,
+            ),
+          ]);
+          record.competition = {
+            checkedAt: today,
+            general: parseApplyhomeCompetitionRows(general),
+            special: parseApplyhomeSpecialRows(special),
+          };
+          fetched++;
+        } catch {
+          failed++;
+        }
+      }),
+    );
+  }
+  return { targets: targets.length, fetched, failed };
+}
 // Official schema namespace: https://infuser.odcloud.kr/oas/docs?namespace=ApplyhomeInfoDetailSvc/v1
 // Manual bounded ingestion. Does not claim to cover all housing or region-wide supply.
 export async function POST(req: Request) {
@@ -116,6 +192,8 @@ export async function POST(req: Request) {
           developer: String(x.CNSTRCT_ENTRPS_NM || ""),
           coverage: "해당 APT 모집공고의 공급물량",
           schedule,
+          houseManageNo: String(x.HOUSE_MANAGE_NO || "") || undefined,
+          pblancNo: String(x.PBLANC_NO || "") || undefined,
           history: [{ date, text: "청약홈 모집공고" }],
         };
         // Historical backfills can persist only the annual supply evidence.
@@ -175,6 +253,12 @@ export async function POST(req: Request) {
         { status: 422 },
       );
     const unique = [...new Map(all.map((x) => [x.id, x])).values()];
+    const previous = new Map(
+      (await allRecords()).map((record) => [record.id, record]),
+    );
+    const competition = supplyOnly
+      ? { targets: 0, fetched: 0, failed: 0 }
+      : await enrichClosedCompetitions(unique, key, previous);
     for (let i = 0; i < unique.length; i += 50)
       await database().batch(
         unique
@@ -191,12 +275,13 @@ export async function POST(req: Request) {
       "청약홈",
       "success",
       unique.length,
-      `${from}~${to} APT 모집공고`,
+      `${from}~${to} APT 모집공고 · 마감 경쟁률 ${competition.fetched}/${competition.targets}${competition.failed ? ` (실패 ${competition.failed})` : ""}`,
     );
     return Response.json({
       ok: true,
       count: unique.length,
       scheduleFields: [...observedScheduleFields].sort(),
+      competition,
       scope: supplyOnly
         ? "청약홈 APT 공고 공급량 · 선택 기간 · 영남·인천"
         : "청약홈 APT 공고 · 선택 기간 · 영남·인천",

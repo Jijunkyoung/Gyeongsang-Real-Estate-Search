@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./competition.css";
 
 export const metadata: Metadata = {
   title: "영남·인천 부동산 아틀라스",
