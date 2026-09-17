@@ -133,11 +133,41 @@ const isClosedApplication = (record: Estate) => {
     closeDate < new Date().toISOString().slice(0, 10)
   );
 };
-const maxCompetitionRate = (record: Estate, rank: "1순위" | "2순위") => {
-  const values = (record.competition?.general || [])
-    .filter((row) => row.rank === rank && row.rate !== null)
-    .map((row) => row.rate as number);
-  return values.length ? Math.max(...values) : null;
+const competitionRowRate = (
+  row: NonNullable<Estate["competition"]>["general"][number],
+) => {
+  if (row.rate !== null) return row.rate;
+  if (
+    row.supplied !== null &&
+    row.supplied > 0 &&
+    row.applicants !== null
+  ) {
+    return row.applicants / row.supplied;
+  }
+  return null;
+};
+const competitionRankSummary = (
+  record: Estate,
+  rank: "1순위" | "2순위",
+) =>
+  (record.competition?.general || [])
+    .filter((row) => row.rank === rank)
+    .map((row) => ({ row, rate: competitionRowRate(row) }))
+    .filter(
+      (item): item is typeof item & { rate: number } => item.rate !== null,
+    )
+    .sort(
+      (a, b) =>
+        b.rate - a.rate ||
+        (b.row.applicants ?? -1) - (a.row.applicants ?? -1),
+    )[0] ?? null;
+const competitionRateLabel = (
+  row: NonNullable<Estate["competition"]>["general"][number],
+) => {
+  const rate = competitionRowRate(row);
+  if (rate === null) return row.rateText;
+  const officialText = row.rate === null ? ` (${row.rateText})` : "";
+  return `${rate.toFixed(2)}:1${officialText}`;
 };
 const labels: Record<string, [number, number]> = {
   경상북도: [270, 250],
@@ -2383,8 +2413,8 @@ function CompetitionBadges({
   compact?: boolean;
 }) {
   if (!isClosedApplication(record)) return null;
-  const first = maxCompetitionRate(record, "1순위");
-  const second = maxCompetitionRate(record, "2순위");
+  const first = competitionRankSummary(record, "1순위");
+  const second = competitionRankSummary(record, "2순위");
   const special = record.competition?.special || [];
   const specialSupplied = special.reduce(
     (sum, row) => sum + (row.supplied || 0),
@@ -2400,8 +2430,16 @@ function CompetitionBadges({
     special.some((row) => row.applicants !== null);
   return (
     <span className={`competition-badges${compact ? " compact" : ""}`}>
-      {first !== null && <span className="rank-one">1순위 최고 {first}:1</span>}
-      {second !== null && <span className="rank-two">2순위 최고 {second}:1</span>}
+      {first !== null && (
+        <span className="rank-one">
+          1순위 최고 {fmt(first.row.applicants, "건")} · {first.rate.toFixed(2)}:1
+        </span>
+      )}
+      {second !== null && (
+        <span className="rank-two">
+          2순위 최고 {fmt(second.row.applicants, "건")} · {second.rate.toFixed(2)}:1
+        </span>
+      )}
       {special.some((row) => row.applicants !== null) && (
         <span className="special-result">
           특공 {fmt(specialApplicants, "건")} / {fmt(specialSupplied, "호")}
@@ -2431,8 +2469,9 @@ function CompetitionDetail({ record }: { record: Estate }) {
       ) : (
         <>
           <p className="note">
-            순위 배지는 주택형·거주지역별 공식 경쟁률 중 최고값입니다. 미달 표기와
-            세부 값은 아래 원문 행을 확인하세요. 자료 확인 {competition.checkedAt}
+            순위 배지는 주택형·거주지역별 경쟁률 중 최고값과 해당 행의 접수건수입니다.
+            공식 경쟁률이 미달로만 표기된 행은 접수건수를 공급세대수로 나눠 소수점
+            둘째 자리까지 표시하며, 미달 원문도 아래 표에 보존합니다. 자료 확인 {competition.checkedAt}
           </p>
           {competition.general.length ? (
             <div className="competition-table-wrap">
@@ -2442,7 +2481,7 @@ function CompetitionDetail({ record }: { record: Estate }) {
                   {competition.general.map((row, index) => (
                     <tr key={`${row.housingType}-${row.rank}-${row.residence}-${index}`}>
                       <td>{row.housingType}</td><td>{row.rank}</td><td>{row.residence}</td>
-                      <td>{fmt(row.supplied, "호")}</td><td>{fmt(row.applicants, "건")}</td><td>{row.rateText}</td>
+                      <td>{fmt(row.supplied, "호")}</td><td>{fmt(row.applicants, "건")}</td><td>{competitionRateLabel(row)}</td>
                     </tr>
                   ))}
                 </tbody>
