@@ -1,0 +1,147 @@
+/* Wide, one-record-per-row information cards. */
+.cards {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 13px;
+}
+
+.record {
+  display: grid;
+  grid-template-columns:
+    minmax(88px, 0.38fr)
+    minmax(240px, 1.45fr)
+    minmax(240px, 1.2fr)
+    minmax(175px, 0.72fr);
+  align-items: stretch;
+  gap: 22px;
+  padding: 18px 20px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.record:hover {
+  border-color: #a9c5bd;
+  box-shadow: 0 8px 22px #274c5b0d;
+}
+
+.record-kind {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-right: 18px;
+  border-right: 1px solid #edf0f3;
+}
+
+.record-copy {
+  align-self: center;
+  min-width: 0;
+}
+
+.record-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-left: 20px;
+  border-left: 1px solid #edf0f3;
+}
+
+.record .record-title {
+  justify-content: flex-start;
+  padding: 0 0 5px;
+}
+
+.record .summary {
+  margin: 9px 0 0;
+  line-height: 1.65;
+}
+
+.record .record-facts {
+  align-self: center;
+  margin: 0;
+  padding: 14px 16px;
+}
+
+.record .foot {
+  width: 100%;
+  padding-top: 12px;
+}
+
+.record .foot > span {
+  display: block;
+  margin-bottom: 9px;
+  line-height: 1.45;
+}
+
+.record-actions .text-button {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+@media (width <= 1150px) {
+  .record {
+    grid-template-columns: 88px minmax(250px, 1.35fr) minmax(230px, 1fr);
+  }
+
+  .record-actions {
+    grid-column: 2 / -1;
+    flex-direction: row;
+    align-items: center;
+    padding: 14px 0 0;
+    border-top: 1px solid #edf0f3;
+    border-left: 0;
+  }
+
+  .record .foot {
+    width: auto;
+    margin-left: auto;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .record .foot > span {
+    margin-bottom: 4px;
+  }
+
+  .record-actions .text-button {
+    width: auto;
+  }
+}
+
+@media (width <= 800px) {
+  .record {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 18px;
+  }
+
+  .record-kind {
+    flex-direction: row;
+    align-items: center;
+    padding: 0;
+    border-right: 0;
+  }
+
+  .record-copy,
+  .record .record-facts {
+    align-self: auto;
+  }
+
+  .record-actions {
+    grid-column: auto;
+    flex-direction: column;
+    align-items: flex-start;
+    padding-top: 14px;
+    border-top: 1px solid #edf0f3;
+  }
+
+  .record .foot {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .record-actions .text-button {
+    width: 100%;
+  }
+}
