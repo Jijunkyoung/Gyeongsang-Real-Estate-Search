@@ -30,7 +30,9 @@ export async function POST(req: Request) {
       "인천 공식자료",
       "success",
       records.length,
-      partial ? "일부 게시판 실패 · 성공 자료 저장" : "3개 공식 채널 수집",
+      partial
+        ? "일부 공식 목록 실패 · 성공 자료 저장"
+        : `${sources.length}개 공식 채널 수집`,
     );
     return Response.json({ ok: true, count: records.length, sources });
   } catch (error) {
