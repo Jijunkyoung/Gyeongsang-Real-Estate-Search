@@ -582,7 +582,8 @@ export function supplyFor(
   const total = rows.find(
     (x) => x.coverage === "전체집계" && x.district === district,
   );
-  if (total)
+  const hasDistrictRows = rows.some((x) => x.district !== "전체");
+  if (total && !(district === "전체" && hasDistrictRows))
     return {
       value: total.units ?? null,
       partial: false,
@@ -596,9 +597,13 @@ export function supplyFor(
     const whole = group.find((x) => x.coverage === "전체집계");
     used.push(...(whole ? [whole] : group));
   }
-  // A province-level partial aggregate may overlap district records: show it alone.
-  const regional = used.filter((x) => x.district === "전체");
-  const chosen = district === "전체" && regional.length ? [regional[0]] : used;
+  // A province-level row can be smaller than the sum of records that were
+  // collected district by district, even when the source labels it as a full
+  // aggregate. For an "전체" view, prefer the non-overlapping district groups
+  // whenever they exist; use the regional row only as a fallback.
+  const districtRows = used.filter((x) => x.district !== "전체");
+  const chosen =
+    district === "전체" && districtRows.length ? districtRows : used;
   return {
     value: chosen.length
       ? chosen.reduce((a, x) => a + (x.units ?? 0), 0)
