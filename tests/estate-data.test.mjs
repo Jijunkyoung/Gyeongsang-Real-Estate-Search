@@ -92,6 +92,43 @@ test("full year total supersedes partial records", () => {
   ];
   assert.equal(supplyFor(all, "울산광역시", "전체", 2026, "분양").value, 2000);
 });
+test("city total sums district supply instead of using a smaller regional row", () => {
+  const base = seed.find(
+    (x) => x.kind === "공급량" && x.year === 2026 && x.supplyType === "분양",
+  );
+  const rows = [
+    {
+      ...base,
+      id: "incheon-partial",
+      region: "인천광역시",
+      district: "전체",
+      units: 120,
+      coverage: "전체집계",
+    },
+    {
+      ...base,
+      id: "incheon-namdong",
+      region: "인천광역시",
+      district: "남동구",
+      units: 320,
+      coverage: "전체집계",
+    },
+    {
+      ...base,
+      id: "incheon-yeonsu",
+      region: "인천광역시",
+      district: "연수구",
+      units: 480,
+      coverage: "전체집계",
+    },
+  ];
+  const result = supplyFor(rows, "인천광역시", "전체", 2026, "분양");
+  assert.equal(result.value, 800);
+  assert.equal(
+    result.rows.map((x) => x.district).sort().join("|"),
+    "남동구|연수구",
+  );
+});
 test("future supply keeps expected and estimated confidence separate", () => {
   const expected = supplyFor(seed, "울산광역시", "울주군", 2027, "입주");
   assert.equal(expected.value, 266);
