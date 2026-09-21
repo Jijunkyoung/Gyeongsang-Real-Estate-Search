@@ -30,6 +30,9 @@ const {
 const { parseLandLawXml } = load("land-law-parser.ts");
 const {
   parseIncheonBoardHtml,
+  parseIhHousingNotices,
+  parseIhProjects,
+  parseLhIncheonNotices,
   isRelevantIncheonTitle,
   inferIncheonDistrict,
 } = load("incheon-sources.ts");
@@ -269,6 +272,34 @@ test("Incheon official boards keep posting dates and reject false keyword hits",
   assert.equal(isRelevantIncheonTitle("인재개발원 재개발 교육과정"), false);
   assert.equal(inferIncheonDistrict("영종 A18블록 주택건설사업"), "영종구");
   assert.equal(inferIncheonDistrict("청라 공동주택 개발계획"), "서해구");
+});
+test("iH housing notices and projects add official Incheon records", () => {
+  const notices = parseIhHousingNotices(`
+    <p class="title" title="제목"><a href="/main/bbs/bbsMsgDetail.do?msg_seq=177&amp;cate1=a&amp;bcd=sale_lease">검암역 푸르지오 입주자모집공고</a></p>
+    <div><li class="center" title="작성일">2026.08.25</li></div>`);
+  assert.equal(notices.length, 1);
+  assert.equal(notices[0].id, "incheon-ih-housing-177");
+  assert.equal(notices[0].district, "검단구");
+  assert.equal(notices[0].date, "2026-08-25");
+
+  const projects = parseIhProjects(`
+    <table><tr><td>71</td><td>도시개발사업</td><td><a href="/main/land/landDetail.do?land_seq=8">검암 플라시아 개발사업</a></td><td>81만㎡</td><td>2019 ~ 2027</td></tr></table>`, "2026-09-21");
+  assert.equal(projects.length, 1);
+  assert.equal(projects[0].id, "incheon-ih-project-8");
+  assert.equal(projects[0].dateType, "checked");
+  assert.match(projects[0].summary, /81만㎡/);
+});
+test("LH public housing notices keep Incheon rows only", () => {
+  const html = `<table><tbody>
+    <tr><td>10</td><td>분양주택</td><td><a href="javascript:" data-id1="0000061174" class="wrtancInfoBtn"><span>[정정공고]인천계양 A6블록 입주자모집공고 <em>1일전</em></span></a></td><td>인천광역시</td><td>첨부</td><td>2026.09.14</td><td>2026.10.02</td><td>접수중</td><td>18,220</td></tr>
+    <tr><td>9</td><td>분양주택</td><td><a href="javascript:" data-id1="0000061171" class="wrtancInfoBtn">대전 공고</a></td><td>대전광역시</td><td>첨부</td><td>2026.09.04</td><td>2026.10.01</td><td>공고중</td><td>10</td></tr>
+  </tbody></table>`;
+  const rows = parseLhIncheonNotices(html, "https://apply.lh.or.kr/list");
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].id, "incheon-lh-0000061174");
+  assert.equal(rows[0].district, "계양구");
+  assert.equal(rows[0].status, "분양주택 · 접수중");
+  assert.match(rows[0].summary, /2026-10-02/);
 });
 test("land-use law XML keeps the zone and legal restriction text", () => {
   const items = parseLandLawXml(`
