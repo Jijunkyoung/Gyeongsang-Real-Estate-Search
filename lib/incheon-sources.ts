@@ -15,6 +15,12 @@ export type IncheonSourceResult = {
   message: string;
 };
 
+const IH_BASE_URL = "https://www.ih.co.kr";
+const LH_SALE_URL =
+  "https://apply.lh.or.kr/lhapply/apply/wt/wrtanc/selectWrtancList.do?mi=1027";
+const LH_RENT_URL =
+  "https://apply.lh.or.kr/lhapply/apply/wt/wrtanc/selectWrtancList.do?mi=1026";
+
 const keywords = [
   "재개발",
   "재건축",
@@ -89,7 +95,7 @@ function decodeHtml(value: string) {
 }
 
 const relevantPattern =
-  /재개발|재건축|정비구역|정비계획|사업시행인가|관리처분|가로주택|소규모(?:주택|재건축)|도시개발|개발계획|실시계획|지구단위계획|공공주택|주택건설(?:사업|공사)|공동주택|입주자\s*모집|분양|주택\s*공급|택지개발|역세권개발|경제자유구역/;
+  /재개발|재건축|정비구역|정비계획|사업시행인가|관리처분|가로주택|소규모(?:주택|재건축)|도시개발|개발계획|실시계획|지구단위계획|공공주택|주택건설(?:사업|공사)|공동주택|입주자\s*모집|분양|주택\s*공급|택지개발|역세권개발|경제자유구역|사용검사/;
 const excludedPattern =
   /인재개발원|인력양성|교육생|직업훈련|채용|합격자|수강생|교육과정/;
 
@@ -99,7 +105,7 @@ export function isRelevantIncheonTitle(title: string) {
 
 export function inferIncheonDistrict(title: string) {
   const rules: Array<[RegExp, string]> = [
-    [/검단|마전|불로|원당|당하|오류동/, "검단구"],
+    [/검단|검암|마전|불로|원당|당하|오류동/, "검단구"],
     [/영종|운서|중산|하늘도시|용유/, "영종구"],
     [/청라|가정|루원|석남|가좌|서구/, "서해구"],
     [/송도|연수|동춘|옥련|선학/, "연수구"],
@@ -169,11 +175,123 @@ export function parseIncheonBoardHtml(
   return records;
 }
 
+export function parseIhHousingNotices(html: string) {
+  const records: Estate[] = [];
+  const pattern =
+    /<p\b[^>]*class=["'][^"']*title[^"']*["'][^>]*>[\s\S]*?<a\b[^>]*href=["']([^"']*msg_seq=([0-9]+)[^"']*)["'][^>]*>([\s\S]*?)<\/a>[\s\S]*?title=["']작성일["'][^>]*>\s*(20\d{2})[.-](\d{2})[.-](\d{2})\s*<\/li>/gi;
+  for (const match of html.matchAll(pattern)) {
+    const title = decodeHtml(match[3]);
+    if (!isRelevantIncheonTitle(title)) continue;
+    const date = `${match[4]}-${match[5]}-${match[6]}`;
+    records.push({
+      id: `incheon-ih-housing-${match[2]}`,
+      kind: classifyKind(title),
+      name: title,
+      region: "인천광역시",
+      district: inferIncheonDistrict(title),
+      date,
+      dateType: "official",
+      source: "iH 인천도시공사 주택분양",
+      url: new URL(decodeHtml(match[1]), IH_BASE_URL).toString(),
+      summary:
+        "인천도시공사 공식 주택분양 게시판의 공고입니다. 공급조건·세대수·신청기간은 연결된 공고문과 첨부파일에서 확인하세요.",
+      status: "iH 공식 공고",
+      important: /입주자\s*모집|분양|공급|사용검사/.test(title),
+    });
+  }
+  return records;
+}
+
+export function parseIhProjects(
+  html: string,
+  checkedAt = new Date().toISOString().slice(0, 10),
+) {
+  const records: Estate[] = [];
+  for (const match of html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)) {
+    const row = match[1];
+    const cells = [...row.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)].map(
+      (cell) => decodeHtml(cell[1]),
+    );
+    if (cells.length < 5) continue;
+    const link = row.match(
+      /<a\b[^>]*href=["']([^"']*land_seq=([0-9]+)[^"']*)["'][^>]*>([\s\S]*?)<\/a>/i,
+    );
+    if (!link) continue;
+    const type = cells[1];
+    const title = decodeHtml(link[3]);
+    const relevantType = /도시개발사업|도시재생사업|건축사업|AMC사업/.test(
+      type,
+    );
+    const relevantTitle =
+      /주택|아파트|공동주택|임대|도시|지구|역세권|복합|단지|개발|재생|검단|계양|영종|송도|청라|도화|구월|검암/.test(
+        title,
+      );
+    if (!relevantType || !relevantTitle) continue;
+    const scale = cells[3] || "규모 미표기";
+    const period = cells[4].replace(/\s+/g, " ").trim() || "기간 미표기";
+    records.push({
+      id: `incheon-ih-project-${link[2]}`,
+      kind: classifyKind(title),
+      name: title,
+      region: "인천광역시",
+      district: inferIncheonDistrict(title),
+      date: checkedAt,
+      dateType: "checked",
+      verifiedAt: checkedAt,
+      source: "iH 인천도시공사 진행사업",
+      url: new URL(decodeHtml(link[1]), IH_BASE_URL).toString(),
+      summary: `${type} · 사업규모 ${scale} · 사업기간 ${period}. 인천도시공사 공식 진행사업 현황 기준이며 세부 단계는 연결된 사업 페이지에서 확인하세요.`,
+      status: `${type} · ${period}`,
+      important: /도시개발|도시재생|주택|아파트|임대/.test(
+        `${type} ${title}`,
+      ),
+    });
+  }
+  return records;
+}
+
+export function parseLhIncheonNotices(html: string, listUrl: string) {
+  const records: Estate[] = [];
+  for (const match of html.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)) {
+    const row = match[1];
+    const link = row.match(
+      /<a\b[^>]*data-id1=["']([0-9]+)["'][^>]*class=["'][^"']*wrtancInfoBtn[^"']*["'][^>]*>([\s\S]*?)<\/a>/i,
+    );
+    if (!link) continue;
+    const cells = [...row.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)].map(
+      (cell) => decodeHtml(cell[1]),
+    );
+    if (cells.length < 8 || cells[3] !== "인천광역시") continue;
+    const title = decodeHtml(link[2]).replace(/\s*\d+일전\s*$/, "").trim();
+    const dates = row.match(/20\d{2}[.-]\d{2}[.-]\d{2}/g) || [];
+    if (!dates.length) continue;
+    const date = dates[0].replaceAll(".", "-");
+    const closing = dates[1]?.replaceAll(".", "-");
+    const noticeType = cells[1] || "공공주택";
+    const status = cells[7] || "공고";
+    records.push({
+      id: `incheon-lh-${link[1]}`,
+      kind: "분양",
+      name: title,
+      region: "인천광역시",
+      district: inferIncheonDistrict(title),
+      date,
+      dateType: "official",
+      source: "LH청약플러스",
+      url: listUrl,
+      summary: `${noticeType} 공식 공고입니다.${closing ? ` 공고 마감일은 ${closing}입니다.` : ""} 신청조건과 실제 접수일은 LH 원문에서 확인하세요.`,
+      status: `${noticeType} · ${status}`,
+      important: /공고중|정정공고중|접수중/.test(status),
+    });
+  }
+  return records;
+}
+
 export async function collectIncheonOfficialRecords(
   fetcher: typeof fetch = fetch,
 ) {
   const records = new Map<string, Estate>();
-  const sourceResults = await Promise.all(
+  const boardResults = await Promise.all(
     incheonBoardSources.map(async (source) => {
     const settled = await Promise.allSettled(
       source.urls.map(async (url) => {
@@ -205,6 +323,63 @@ export async function collectIncheonOfficialRecords(
       };
     }),
   );
+  const customSources = [
+    {
+      name: "iH 인천도시공사 주택분양",
+      urls: [1, 2, 3].map((page) =>
+        page === 1
+          ? `${IH_BASE_URL}/main/sale_lease/board/house_notice.jsp`
+          : `${IH_BASE_URL}/main/bbs/bbsMsgList.do?cate1=a&bcd=sale_lease&pgno=${page}`,
+      ),
+      parse: (html: string) => parseIhHousingNotices(html),
+    },
+    {
+      name: "iH 인천도시공사 진행사업",
+      urls: [1, 2, 3, 4].map((page) =>
+        page === 1
+          ? `${IH_BASE_URL}/main/business/all.jsp`
+          : `${IH_BASE_URL}/main/land/landList.do?pgno=${page}`,
+      ),
+      parse: (html: string) => parseIhProjects(html),
+    },
+    {
+      name: "LH청약플러스 인천 공공주택",
+      urls: [LH_SALE_URL, LH_RENT_URL],
+      parse: (html: string, url: string) => parseLhIncheonNotices(html, url),
+    },
+  ];
+  const customResults = await Promise.all(
+    customSources.map(async (source) => {
+      const settled = await Promise.allSettled(
+        source.urls.map(async (url) => {
+          const response = await fetcher(url, {
+            headers: { "User-Agent": "YeongnamPropertyAtlas/1.0" },
+            signal: AbortSignal.timeout(25000),
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return source.parse(await response.text(), url);
+        }),
+      );
+      const fulfilled = settled.filter(
+        (item): item is PromiseFulfilledResult<Estate[]> =>
+          item.status === "fulfilled",
+      );
+      const failures = settled.length - fulfilled.length;
+      return {
+        records: fulfilled.flatMap((item) => item.value),
+        result: {
+          source: source.name,
+          ok: fulfilled.length > 0,
+          fetched: fulfilled.length,
+          matched: fulfilled.reduce((sum, item) => sum + item.value.length, 0),
+          message: failures
+            ? `${failures}개 조회 실패, 나머지 결과 저장`
+            : "공식 목록 조회 완료",
+        } satisfies IncheonSourceResult,
+      };
+    }),
+  );
+  const sourceResults = [...boardResults, ...customResults];
   for (const sourceResult of sourceResults)
     for (const record of sourceResult.records) records.set(record.id, record);
   return {
