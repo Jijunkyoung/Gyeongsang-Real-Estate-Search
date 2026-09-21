@@ -501,7 +501,7 @@ export default function Home() {
   function card(x: Estate) {
     return (
       <article className="record" key={x.id}>
-        <div className="row spread">
+        <div className="record-kind">
           <span className={"tag " + (x.kind === "분양" ? "green" : "")}>
             {x.kind === "분양" && x.id === "lh-taehwa" ? "공공임대" : x.kind}
           </span>
@@ -516,25 +516,29 @@ export default function Home() {
             />
           </button>
         </div>
-        <button className="record-title" onClick={() => setDetail(x)}>
-          {x.name}
-          <ArrowUpRight size={18} />
-        </button>
-        <p>
-          {short(x.region)} {x.district === "전체" ? "" : x.district} ·{" "}
-          {x.status}
-        </p>
-        <RecordFacts record={x} />
-        <p className="summary">{x.summary}</p>
-        <LinkOut url={x.url}>출처 바로 확인</LinkOut>
-        <div className="row spread foot">
-          <span>
-            {x.source} · {x.dateType === "checked" ? "확인 " : ""}
-            {x.date}
-          </span>
-          <button className="text-button" onClick={() => setDetail(x)}>
-            상세 보기
+        <div className="record-copy">
+          <button className="record-title" onClick={() => setDetail(x)}>
+            {x.name}
+            <ArrowUpRight size={18} />
           </button>
+          <p>
+            {short(x.region)} {x.district === "전체" ? "" : x.district} ·{" "}
+            {x.status}
+          </p>
+          <p className="summary">{x.summary}</p>
+        </div>
+        <RecordFacts record={x} />
+        <div className="record-actions">
+          <LinkOut url={x.url}>출처 바로 확인</LinkOut>
+          <div className="foot">
+            <span>
+              {x.source} · {x.dateType === "checked" ? "확인 " : ""}
+              {x.date}
+            </span>
+            <button className="text-button" onClick={() => setDetail(x)}>
+              상세 보기
+            </button>
+          </div>
         </div>
       </article>
     );
