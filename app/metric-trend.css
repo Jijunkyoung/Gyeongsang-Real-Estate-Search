@@ -1,0 +1,95 @@
+.metric-trend {
+  margin: 0 0 22px;
+  padding: 18px;
+  border: 1px solid #e1e8ed;
+  border-radius: 9px;
+  background: #f8fafb;
+}
+
+.metric-trend-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.metric-trend-head h3 {
+  color: #263f53;
+  font-size: 16px;
+}
+
+.metric-trend-head p {
+  margin-top: 3px;
+  font-size: 13px;
+}
+
+.metric-period {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 3px;
+  border: 1px solid #dce5eb;
+  border-radius: 7px;
+  background: #fff;
+}
+
+.metric-period button {
+  min-height: 32px;
+  padding: 5px 11px;
+  border: 0;
+  border-radius: 5px;
+  color: #647b8c;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.metric-period button.selected {
+  color: #fff;
+  background: #197565;
+}
+
+.metric-trend-chart {
+  width: 100%;
+  height: 245px;
+  aspect-ratio: auto;
+}
+
+.metric-trend-note {
+  margin-top: 8px;
+  color: #7d8b99;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.metric-trend-empty {
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+  padding: 20px;
+  color: #81909d;
+  text-align: center;
+  font-size: 14px;
+}
+
+@media (width <= 520px) {
+  .metric-trend {
+    padding: 15px;
+  }
+
+  .metric-trend-head {
+    flex-direction: column;
+  }
+
+  .metric-period {
+    width: 100%;
+  }
+
+  .metric-period button {
+    flex: 1;
+  }
+
+  .metric-trend-chart {
+    height: 220px;
+  }
+}
