@@ -21,6 +21,7 @@ function load(file) {
 }
 const { regions, seed, supplyFor } = load("estate.ts");
 const { optionalCount } = load("data-utils.ts");
+const { marketTrendFor } = load("metric-trends.ts");
 const { parsePermitRows } = load("kosis.ts");
 const {
   buildApplyhomeSchedule,
@@ -43,6 +44,33 @@ test("empty upstream counts never become zero", () => {
     assert.equal(optionalCount(v), null);
   assert.equal(optionalCount("0"), 0);
   assert.equal(optionalCount("1,234"), 1234);
+});
+test("market trends group weekly records and use month-end weekly fallback", () => {
+  const base = {
+    id: "trend",
+    kind: "시장지표",
+    name: "인천 매매",
+    region: "인천광역시",
+    district: "전체",
+    source: "한국부동산원",
+    url: "https://www.reb.or.kr/",
+    summary: "공식 주간 지표",
+    status: "공식자료",
+    important: false,
+  };
+  const rows = [
+    { ...base, id: "s1", date: "2026-09-07", metric: "매매지수 주간", rate: 0.1 },
+    { ...base, id: "s2", date: "2026-09-28", metric: "매매지수 주간", rate: 0.3 },
+    { ...base, id: "l1", date: "2026-09-28", metric: "전세지수 주간", rate: 0.2 },
+    { ...base, id: "s3", date: "2026-10-05", metric: "매매지수 주간", rate: -0.1 },
+  ];
+  const weekly = marketTrendFor(rows, "인천광역시", "전체", "week");
+  assert.equal(weekly.points.length, 3);
+  const monthly = marketTrendFor(rows, "인천광역시", "전체", "month");
+  assert.equal(monthly.points.length, 2);
+  assert.equal(monthly.points[0].sale, 0.3);
+  assert.equal(monthly.points[0].lease, 0.2);
+  assert.equal(monthly.basis, "주간지표의 월말값");
 });
 test("period totals are partial and completions are separate from occupancy", () => {
   const s = supplyFor(seed, "울산광역시", "전체", 2026, "분양");
