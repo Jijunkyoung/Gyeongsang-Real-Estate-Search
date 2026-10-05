@@ -55,7 +55,23 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Toaster } from "@/components/ui/sonner";
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 import { toast } from "sonner";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from "recharts";
 import maps from "@/lib/map.json";
 import {
   regions,
@@ -72,6 +88,7 @@ import {
 import type { ApartmentTrade } from "@/lib/transactions";
 import { commonLandZones } from "@/lib/land-law";
 import type { LandLawItem } from "@/lib/land-law-parser";
+import { marketTrendFor, type TrendCadence } from "@/lib/metric-trends";
 type TradeLookup = {
   items: ApartmentTrade[];
   summary: {
@@ -989,6 +1006,11 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
+                <RegionMetricTrend
+                  records={records}
+                  region={region}
+                  district={district}
+                />
                 <div className="region-counts">
                   <span>
                     분양·임대{" "}
@@ -1900,6 +1922,116 @@ export default function Home() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+const metricTrendConfig = {
+  sale: { label: "매매 변동률", color: "#b54231" },
+  lease: { label: "전세 변동률", color: "#2765ad" },
+} satisfies ChartConfig;
+
+function RegionMetricTrend({
+  records,
+  region,
+  district,
+}: {
+  records: Estate[];
+  region: string;
+  district: string;
+}) {
+  const [cadence, setCadence] = useState<TrendCadence>("week");
+  const trend = useMemo(
+    () => marketTrendFor(records, region, district, cadence),
+    [records, region, district, cadence],
+  );
+  const values = trend.points.flatMap((point) =>
+    [point.sale, point.lease].filter((value): value is number => value != null),
+  );
+  const bound = Math.max(0.1, ...values.map((value) => Math.abs(value)));
+
+  return (
+    <section className="metric-trend" aria-labelledby="metric-trend-title">
+      <div className="metric-trend-head">
+        <div>
+          <h3 id="metric-trend-title">핵심지표 변화추이</h3>
+          <p>{region} {district === "전체" ? "전체" : district} · 최근 12개 구간</p>
+        </div>
+        <div className="metric-period" aria-label="변화추이 집계단위">
+          {(["week", "month"] as TrendCadence[]).map((value) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={cadence === value}
+              className={cadence === value ? "selected" : ""}
+              onClick={() => setCadence(value)}
+            >
+              {value === "week" ? "주단위" : "월단위"}
+            </button>
+          ))}
+        </div>
+      </div>
+      {trend.points.length ? (
+        <>
+          <ChartContainer
+            config={metricTrendConfig}
+            className="metric-trend-chart"
+            role="img"
+            aria-label={`${region} ${district} 매매·전세 변동률 ${cadence === "week" ? "주간" : "월간"} 추이`}
+          >
+            <LineChart data={trend.points} margin={{ top: 12, right: 12, left: 0, bottom: 4 }}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={18} />
+              <YAxis
+                domain={[-bound, bound]}
+                tickLine={false}
+                axisLine={false}
+                width={48}
+                tickFormatter={(value) => `${Number(value).toFixed(2)}%`}
+              />
+              <ReferenceLine y={0} stroke="#9aa9b5" />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(_, payload) => payload?.[0]?.payload?.date || ""}
+                  />
+                }
+              />
+              <ChartLegend content={<ChartLegendContent />} />
+              <Line
+                type="monotone"
+                dataKey="sale"
+                stroke="var(--color-sale)"
+                strokeWidth={2.5}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+                connectNulls
+                unit="%"
+              />
+              <Line
+                type="monotone"
+                dataKey="lease"
+                stroke="var(--color-lease)"
+                strokeWidth={2.5}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+                connectNulls
+                unit="%"
+              />
+            </LineChart>
+          </ChartContainer>
+          <p className="metric-trend-note">
+            {trend.basis} 기준
+            {trend.points.length < 2
+              ? " · 현재 저장 기록이 1건이라 다음 기준일 자료부터 선으로 연결됩니다."
+              : " · 각 구간의 마지막 공식 발표값을 표시합니다."}
+          </p>
+        </>
+      ) : (
+        <div className="metric-trend-empty">
+          선택 지역의 {cadence === "week" ? "주간" : "월간"} 매매·전세 기록이 아직 없습니다.
+        </div>
+      )}
+    </section>
   );
 }
 function Rankings({ records }: { records: Estate[] }) {
