@@ -1,9 +1,13 @@
 .metric-trend {
-  margin: 0 0 22px;
+  margin: 0 0 24px;
   padding: 18px;
   border: 1px solid #e1e8ed;
   border-radius: 9px;
   background: #f8fafb;
+}
+
+.market-snapshot + .metric-trend {
+  margin-top: -4px;
 }
 
 .metric-trend-head {
