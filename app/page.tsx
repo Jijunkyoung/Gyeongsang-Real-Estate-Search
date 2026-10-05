@@ -1006,11 +1006,6 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-                <RegionMetricTrend
-                  records={records}
-                  region={region}
-                  district={district}
-                />
                 <div className="region-counts">
                   <span>
                     분양·임대{" "}
@@ -1127,6 +1122,11 @@ export default function Home() {
             </div>
             {toolbar}
             <MarketSnapshot
+              records={records}
+              region={region}
+              district={district}
+            />
+            <RegionMetricTrend
               records={records}
               region={region}
               district={district}
