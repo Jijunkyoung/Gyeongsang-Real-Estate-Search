@@ -1,6 +1,6 @@
 name: Refresh official real-estate data
 
-# 2026-09-10: 인천광역시 확장 후 공식자료 전체 역수집을 다시 실행합니다.
+# 2026-10-06: R-ONE 월간 매매·전세 5년 자료를 최초 역수집합니다.
 
 on:
   schedule:
