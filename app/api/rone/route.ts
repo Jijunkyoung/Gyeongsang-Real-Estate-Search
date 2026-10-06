@@ -80,7 +80,10 @@ export async function POST(req: Request) {
     const checkedAt = now.toISOString().slice(0, 10);
     const catalog = await roneRows("SttsApiTbl.do", key, {});
     const selections = selectRoneTables(catalog);
-    const wanted = ["week-sale", "week-lease", "month-sale", "month-lease"];
+    // R-ONE Open API currently publishes the monthly price tables. Weekly
+    // apartment trends are released through the separate bulletin/report feed,
+    // so their absence must not block the official monthly backfill.
+    const wanted = ["month-sale", "month-lease"];
     const found = new Set(selections.map((value) => `${value.cadence}-${value.series}`));
     const missing = wanted.filter((value) => !found.has(value));
     if (missing.length)
@@ -119,9 +122,17 @@ export async function POST(req: Request) {
       "R-ONE",
       "success",
       unique.length,
-      `${backfill ? "과거자료 역수집" : "최근자료 갱신"} · 주간 2종·월간 2종`,
+      `${backfill ? "과거자료 역수집" : "최근자료 갱신"} · 월간 매매·전세`,
     );
-    return Response.json({ ok: true, count: unique.length, backfill, diagnostics });
+    return Response.json({
+      ok: true,
+      count: unique.length,
+      backfill,
+      diagnostics,
+      weekly: selections.some((value) => value.cadence === "week")
+        ? "R-ONE 주간 통계표 수집"
+        : "R-ONE Open API 주간 통계표 미제공 · 기존 공식 주간자료 유지",
+    });
   } catch (error) {
     const detail = error instanceof Error ? error.message : "알 수 없는 오류";
     console.error("R-ONE collection failed", detail);
