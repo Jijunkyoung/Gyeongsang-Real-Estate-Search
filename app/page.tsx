@@ -1954,7 +1954,9 @@ function RegionMetricTrend({
       <div className="metric-trend-head">
         <div>
           <h3 id="metric-trend-title">핵심지표 변화추이</h3>
-          <p>{region} {district === "전체" ? "전체" : district} · 최근 12개 구간</p>
+          <p>
+            {region} {district === "전체" ? "전체" : district} · {cadence === "week" ? "최근 52주" : "최근 36개월"}
+          </p>
         </div>
         <div className="metric-period" aria-label="변화추이 집계단위">
           {(["week", "month"] as TrendCadence[]).map((value) => (
@@ -2002,7 +2004,7 @@ function RegionMetricTrend({
                 dataKey="sale"
                 stroke="var(--color-sale)"
                 strokeWidth={2.5}
-                dot={{ r: 3 }}
+                dot={trend.points.length <= 16 ? { r: 3 } : false}
                 activeDot={{ r: 5 }}
                 connectNulls
                 unit="%"
@@ -2012,7 +2014,7 @@ function RegionMetricTrend({
                 dataKey="lease"
                 stroke="var(--color-lease)"
                 strokeWidth={2.5}
-                dot={{ r: 3 }}
+                dot={trend.points.length <= 16 ? { r: 3 } : false}
                 activeDot={{ r: 5 }}
                 connectNulls
                 unit="%"

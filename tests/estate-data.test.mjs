@@ -22,6 +22,14 @@ function load(file) {
 const { regions, seed, supplyFor } = load("estate.ts");
 const { optionalCount } = load("data-utils.ts");
 const { marketTrendFor } = load("metric-trends.ts");
+const {
+  parseRoneXml,
+  selectRoneTables,
+  selectRoneValueItem,
+  roneLocation,
+  roneDate,
+  normalizeRoneRows,
+} = load("rone.ts");
 const { parsePermitRows } = load("kosis.ts");
 const {
   buildApplyhomeSchedule,
@@ -71,6 +79,42 @@ test("market trends group weekly records and use month-end weekly fallback", () 
   assert.equal(monthly.points[0].sale, 0.3);
   assert.equal(monthly.points[0].lease, 0.2);
   assert.equal(monthly.basis, "주간지표의 월말값");
+});
+test("R-ONE XML, table discovery, location and periods normalize", () => {
+  const xml = `<SttsApiTbl><head><list_total_count>1</list_total_count><RESULT><CODE>INFO-000</CODE><MESSAGE>정상</MESSAGE></RESULT></head><row><STATBL_ID>T1</STATBL_ID><STATBL_NM>(주) 지역별 매매가격지수 변동률_아파트</STATBL_NM><DTACYCLE_CD>WK</DTACYCLE_CD></row></SttsApiTbl>`;
+  const parsed = parseRoneXml(xml);
+  assert.equal(parsed.total, 1);
+  assert.equal(parsed.rows[0].STATBL_ID, "T1");
+  const selected = selectRoneTables([
+    parsed.rows[0],
+    { STATBL_ID: "T2", STATBL_NM: "(주) 지역별 전세가격지수 변동률_아파트", DTACYCLE_CD: "WK" },
+    { STATBL_ID: "T3", STATBL_NM: "(월) 지역별 매매가격지수 변동률_아파트", DTACYCLE_CD: "MM" },
+    { STATBL_ID: "T4", STATBL_NM: "(월) 지역별 전세가격지수 변동률_아파트", DTACYCLE_CD: "MM" },
+  ]);
+  assert.equal(selected.length, 4);
+  const item = selectRoneValueItem([{ ITM_ID: 100001, ITM_NM: "변동률" }]);
+  assert.equal(item.id, "100001");
+  assert.equal(item.isRate, true);
+  const location = roneLocation({ CLS_FULLNM: "경상남도 > 창원시 > 성산구" });
+  assert.equal(location.region, "경상남도");
+  assert.equal(location.district, "창원시 성산구");
+  assert.equal(roneDate({ WRTTIME_IDTFR_ID: "202640" }, "week"), "2026-09-28");
+  const records = normalizeRoneRows(
+    [
+      {
+        WRTTIME_IDTFR_ID: "202609",
+        CLS_ID: 50,
+        CLS_FULLNM: "인천광역시 > 연수구",
+        ITM_ID: 100001,
+        DTA_VAL: "0.17",
+      },
+    ],
+    { id: "T3", name: "월간", cycle: "MM", cadence: "month", series: "sale" },
+    { id: "100001", isRate: true },
+    "2026-10-06",
+  );
+  assert.equal(records[0].district, "연수구");
+  assert.equal(records[0].rate, 0.17);
 });
 test("period totals are partial and completions are separate from occupancy", () => {
   const s = supplyFor(seed, "울산광역시", "전체", 2026, "분양");

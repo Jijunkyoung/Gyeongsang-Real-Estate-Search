@@ -1,6 +1,6 @@
 name: Refresh official real-estate data
 
-# 2026-09-21: iH·LH 인천 공식자료 확장 후 전체 역수집을 다시 실행합니다.
+# 2026-09-10: 인천광역시 확장 후 공식자료 전체 역수집을 다시 실행합니다.
 
 on:
   schedule:
@@ -56,6 +56,7 @@ jobs:
           start_year="$((year - 5))"
           collect "/api/incheon" '{}'
           collect "/api/kosis" "$(jq -nc --argjson start "${start_year}" --argjson end "${year}" '{startYear:$start,endYear:$end}')"
+          collect "/api/rone" "$(jq -nc --arg event "${GITHUB_EVENT_NAME}" '{backfill:($event=="push")}')"
 
           collect_range() {
             local cursor="$1"

@@ -72,7 +72,7 @@ export function marketTrendFor(
 
   const points = [...buckets.values()]
     .sort((a, b) => a.period.localeCompare(b.period))
-    .slice(-12);
+    .slice(cadence === "week" ? -52 : -36);
   const basis =
     cadence === "week"
       ? "공식 주간지표"
