@@ -42,7 +42,7 @@ jobs:
             local body="$2"
             local token
             token="$(oidc_token)"
-            curl --fail --silent --show-error --retry 2 \
+            curl --fail-with-body --silent --show-error --retry 2 \
               -X POST \
               -H "Authorization: Bearer ${token}" \
               -H "Content-Type: application/json" \

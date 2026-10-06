@@ -123,14 +123,16 @@ export async function POST(req: Request) {
     );
     return Response.json({ ok: true, count: unique.length, backfill, diagnostics });
   } catch (error) {
+    const detail = error instanceof Error ? error.message : "알 수 없는 오류";
+    console.error("R-ONE collection failed", detail);
     if (authorized)
       try {
-        await recordSync("R-ONE", "error", 0, "수집 실패");
+        await recordSync("R-ONE", "error", 0, `수집 실패 · ${detail.slice(0, 240)}`);
       } catch {}
     return Response.json(
       {
         error: "R-ONE 과거 시장지표를 수집하지 못했습니다.",
-        detail: error instanceof Error ? error.message : "알 수 없는 오류",
+        detail,
       },
       { status: 502 },
     );
