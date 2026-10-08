@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import subprocess
 import tempfile
 import time
 import urllib.parse
@@ -76,22 +77,29 @@ def post_rows(site_url: str, payload: dict[str, Any]) -> None:
     data = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode()
     for attempt in range(3):
         try:
-            request = urllib.request.Request(
-                f"{site_url}/api/rone-weekly",
-                data=data,
-                headers={
-                    "Authorization": f"Bearer {oidc_token()}",
-                    "Content-Type": "application/json",
-                },
+            completed = subprocess.run(
+                [
+                    "curl", "--fail-with-body", "--silent", "--show-error", "--retry", "2",
+                    "-X", "POST", "-H", f"Authorization: Bearer {oidc_token()}",
+                    "-H", "Content-Type: application/json", "--data-binary", "@-",
+                    f"{site_url}/api/rone-weekly",
+                ],
+                input=data,
+                capture_output=True,
+                check=True,
+                timeout=120,
             )
-            with urllib.request.urlopen(request, timeout=90) as response:
-                result = json.load(response)
+            result = json.loads(completed.stdout)
             if not result.get("ok"):
                 raise RuntimeError(str(result))
             return
-        except Exception:
+        except Exception as error:
             if attempt == 2:
-                raise
+                if isinstance(error, subprocess.CalledProcessError):
+                    detail = (error.stderr or error.stdout or b"").decode(errors="replace")
+                else:
+                    detail = str(error)
+                raise RuntimeError(f"사이트 주간자료 저장 실패: {detail[:500]}") from None
             time.sleep(2 ** attempt)
 
 
