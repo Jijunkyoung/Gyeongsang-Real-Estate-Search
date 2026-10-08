@@ -1,6 +1,6 @@
 name: Refresh official real-estate data
 
-# 2026-10-08: R-ONE 주간 매매·전세 최근 5년 시계열을 최초 역수집합니다.
+# 2026-10-08: R-ONE 주간 매매·전세 최근 52주 시계열을 최초 역수집합니다.
 
 on:
   schedule:
@@ -37,7 +37,7 @@ jobs:
         run: python -m pip install "openpyxl~=3.1"
 
       - name: Import R-ONE weekly history
-        # The importer uses the same OIDC-authorized curl path as the other collectors.
+        # Import and retain the 52 official weekly points displayed by the graph.
         run: python scripts/import-rone-weekly.py
 
       - name: Collect Incheon, KOSIS and ApplyHome

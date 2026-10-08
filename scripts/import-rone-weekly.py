@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download the official R-ONE weekly workbook and upload five years of trends."""
+"""Download the official R-ONE weekly workbook and upload the latest 52 weeks."""
 
 from __future__ import annotations
 
@@ -165,7 +165,7 @@ def workbook_rows(path: Path) -> list[dict[str, Any]]:
         if isinstance(value, datetime)
     ]
     latest = max(value.date() for value in dates)
-    cutoff = date(latest.year - 5, latest.month, latest.day)
+    cutoff = sorted({value.date() for value in dates})[-52]
     rows: list[dict[str, Any]] = []
     for sheet_name, metric in (("매매변동률", "매매지수 주간"), ("전세변동률", "전세지수 주간")):
         sheet = workbook[sheet_name]
@@ -200,6 +200,7 @@ def main() -> None:
         workbook_path.unlink(missing_ok=True)
     if not rows:
         raise RuntimeError("R-ONE 주간 시계열 행을 찾지 못했습니다.")
+    cutoff = min(str(row["date"]) for row in rows)
     verified_at = date.today().isoformat()
     for offset in range(0, len(rows), CHUNK_SIZE):
         chunk = rows[offset : offset + CHUNK_SIZE]
@@ -210,6 +211,7 @@ def main() -> None:
             "total": len(rows),
             "workbook": workbook_name,
             "verifiedAt": verified_at,
+            "cutoff": cutoff,
         })
         print(f"uploaded {min(offset + len(chunk), len(rows))}/{len(rows)}")
 

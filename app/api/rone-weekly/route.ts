@@ -60,6 +60,7 @@ export async function POST(req: Request) {
       total?: unknown;
       workbook?: unknown;
       verifiedAt?: unknown;
+      cutoff?: unknown;
     };
     if (!Array.isArray(body.rows) || !body.rows.length || body.rows.length > 1000)
       return Response.json(
@@ -84,11 +85,20 @@ export async function POST(req: Request) {
     if (body.final === true) {
       const total = Number(body.total);
       const workbook = String(body.workbook || "시계열 통계표").slice(0, 120);
+      const cutoff = String(body.cutoff || "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(cutoff))
+        throw new Error("주간 시계열 정리 기준일이 올바르지 않습니다.");
+      await database()
+        .prepare(
+          "DELETE FROM estate_records WHERE id LIKE 'rone-weekly:%' AND json_extract(payload, '$.date') < ?",
+        )
+        .bind(cutoff)
+        .run();
       await recordSync(
         "R-ONE 주간",
         "success",
         Number.isFinite(total) ? total : records.length,
-        `과거자료 역수집 · 최근 5년 매매·전세 · ${workbook}`,
+        `과거자료 역수집 · 최근 52주 매매·전세 · ${workbook}`,
       );
     }
     return Response.json({ ok: true, count: records.length, final: body.final === true });
