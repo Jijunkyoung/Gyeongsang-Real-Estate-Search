@@ -37,6 +37,7 @@ jobs:
         run: python -m pip install "openpyxl~=3.1"
 
       - name: Import R-ONE weekly history
+        # The importer uses the same OIDC-authorized curl path as the other collectors.
         run: python scripts/import-rone-weekly.py
 
       - name: Collect Incheon, KOSIS and ApplyHome
